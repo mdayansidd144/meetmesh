@@ -1,2 +1,6 @@
 # meetmesh
 this is mine video and chat talking application
+  ALICE_TOKEN = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhYTlmOGEwNGJjNWY0NjEwYjFhY2NhOSIsImlhdCI6MTc4OTUyNDY4MywiZXhwIjoxNzkwMTI5NDgzfQ.5LBXs3Lj2RRScRb1-jzOtv-ncrWZqqIsME57X0hqC0E
+  ALICE_ID = 6aa9f8a04bc5f4610b1acca9
+  BOB_TOKEN = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhYTlmYjEzY2IxMzVmYTk3NzhkYWZiYSIsImlhdCI6MTc4OTUyNDc1NSwiZXhwIjoxNzkwMTI5NTU1fQ._dxjuHVEm7-tyDxKbHZWbiAWR-pbQL9NruGlpwuwguI
+  BOB_ID = 6aa9fb13cb135fa9778dafba
