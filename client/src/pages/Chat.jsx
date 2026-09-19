@@ -110,7 +110,6 @@ export default function Chat() {
   const [userSearchResults, setUserSearchResults] = useState([]);
   const [searchingUsers, setSearchingUsers] = useState(false);
 
-  // ✅ NEW — Group call state
   const [groupCallRoom, setGroupCallRoom] = useState(null);
 
   const [isLight, setIsLight] = useState(
@@ -666,6 +665,27 @@ export default function Chat() {
     );
   }, []);
 
+  const handleRequestReceived = useCallback(() => {
+    setPendingCount((c) => c + 1);
+  }, []);
+
+  const handleRequestAccepted = useCallback(() => {
+    axios.get(`${API}/auth/users`).then((r) => setUsers(r.data));
+    setToast({
+      type: "message",
+      title: "Request accepted",
+      body: "You can now chat with this contact",
+    });
+  }, []);
+
+  const handleRequestDeclined = useCallback(() => {
+    setToast({
+      type: "message",
+      title: "Request declined",
+      body: "Your contact request was declined",
+    });
+  }, []);
+
   const socketRef = useSocket(user?._id, {
     onMessageReceive: handleMessageReceive,
     onMessageSent: handleMessageSent,
@@ -682,55 +702,16 @@ export default function Chat() {
     onReactionUpdate: handleReactionUpdate,
     onMessageDeleted: handleMessageDeleted,
     onCallLogNew: handleCallLogNew,
+    // ✅ These now go through useSocket — no more manual effect binding
+    onRoomReadUpdate: handleRoomReadUpdate,
+    onScheduledQueued: handleScheduledQueued,
+    onScheduledFlushed: handleScheduledFlushed,
+    onRequestReceived: handleRequestReceived,
+    onRequestAccepted: handleRequestAccepted,
+    onRequestDeclined: handleRequestDeclined,
   });
 
-  useEffect(() => {
-    const s = socketRef.current;
-    if (!s) return;
-    s.on("room:read:update", handleRoomReadUpdate);
-    s.on("scheduled:queued", handleScheduledQueued);
-    s.on("scheduled:flushed", handleScheduledFlushed);
-    return () => {
-      s.off("room:read:update", handleRoomReadUpdate);
-      s.off("scheduled:queued", handleScheduledQueued);
-      s.off("scheduled:flushed", handleScheduledFlushed);
-    };
-  }, [
-    socketRef.current,
-    handleRoomReadUpdate,
-    handleScheduledQueued,
-    handleScheduledFlushed,
-  ]);
-
-  useEffect(() => {
-    const s = socketRef.current;
-    if (!s) return;
-    const onReceived = () => setPendingCount((c) => c + 1);
-    const onAccepted = () => {
-      axios.get(`${API}/auth/users`).then((r) => setUsers(r.data));
-      setToast({
-        type: "message",
-        title: "Request accepted",
-        body: "You can now chat with this contact",
-      });
-    };
-    const onDeclined = () => {
-      setToast({
-        type: "message",
-        title: "Request declined",
-        body: "Your contact request was declined",
-      });
-    };
-    s.on("request:received", onReceived);
-    s.on("request:accepted", onAccepted);
-    s.on("request:declined", onDeclined);
-    return () => {
-      s.off("request:received", onReceived);
-      s.off("request:accepted", onAccepted);
-      s.off("request:declined", onDeclined);
-    };
-  }, [socketRef.current]);
-
+  // Connection status listener (uses socketRef.current, so effect below is fine)
   useEffect(() => {
     const s = socketRef.current;
     if (!s) return;

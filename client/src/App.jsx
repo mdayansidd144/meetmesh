@@ -30,7 +30,10 @@ export default function App() {
   const { user, loading } = useAuth();
   const lock = useLockContext();
 
-  if (loading) {
+  // ✅ Wait for BOTH auth and lock to be ready — prevents Chat from
+  // mounting twice (once before lock.ready, once after), which caused
+  // the socket to disconnect/reconnect and drop messages.
+  if (loading || !lock.ready) {
     return (
       <div className="h-screen flex items-center justify-center bg-background text-foreground">
         <div className="text-slate-500">Loading MeetMesh</div>
@@ -38,7 +41,7 @@ export default function App() {
     );
   }
 
-  if (user && lock.ready && lock.locked) {
+  if (user && lock.locked) {
     return <LockScreen onUnlock={lock.unlock} />;
   }
 

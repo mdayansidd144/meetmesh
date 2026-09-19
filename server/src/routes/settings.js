@@ -261,4 +261,19 @@ router.post("/backfill-discoverable", protect, async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 });
+router.post("/backfill-email-discovery", protect, async (req, res) => {
+  try {
+    const result = await User.updateMany(
+      { "settings.privacy.discoverableByEmail": { $exists: false } },
+      { $set: { "settings.privacy.discoverableByEmail": "everyone" } }
+    );
+    res.json({
+      ok: true,
+      matched: result.matchedCount,
+      modified: result.modifiedCount,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
 export default router;
