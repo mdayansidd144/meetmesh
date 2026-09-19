@@ -126,7 +126,12 @@ export default function Chat() {
     return () => observer.disconnect();
   }, []);
 
+  // ✅ usePushNotifications — keyed by user._id only, so it won't re-run
+  // on every new `user` object reference from AuthContext
   const push = usePushNotifications(user);
+  const pushSupported = push?.supported;
+  const pushSubscribed = push?.subscribed;
+
   const debouncedSearch = useDebounce(search, 300);
 
   const typingTimeout = useRef(null);
@@ -177,7 +182,7 @@ export default function Chat() {
 
   useEffect(() => {
     if (!user?._id || notificationPromptChecked) return;
-    if (push?.supported === false) {
+    if (pushSupported === false) {
       setNotificationPromptChecked(true);
       return;
     }
@@ -187,7 +192,7 @@ export default function Chat() {
       setNotificationPromptChecked(true);
       return;
     }
-    if (push?.subscribed) {
+    if (pushSubscribed) {
       localStorage.setItem(key, "1");
       setNotificationPromptChecked(true);
       return;
@@ -197,7 +202,12 @@ export default function Chat() {
       setNotificationPromptChecked(true);
     }, 1500);
     return () => clearTimeout(timer);
-  }, [user?._id, push?.supported, push?.subscribed, notificationPromptChecked]);
+  }, [
+    user?._id,
+    pushSupported,
+    pushSubscribed,
+    notificationPromptChecked,
+  ]);
 
   useEffect(() => {
     if (!location.state) return;
@@ -702,7 +712,6 @@ export default function Chat() {
     onReactionUpdate: handleReactionUpdate,
     onMessageDeleted: handleMessageDeleted,
     onCallLogNew: handleCallLogNew,
-    // ✅ These now go through useSocket — no more manual effect binding
     onRoomReadUpdate: handleRoomReadUpdate,
     onScheduledQueued: handleScheduledQueued,
     onScheduledFlushed: handleScheduledFlushed,
@@ -711,7 +720,6 @@ export default function Chat() {
     onRequestDeclined: handleRequestDeclined,
   });
 
-  // Connection status listener (uses socketRef.current, so effect below is fine)
   useEffect(() => {
     const s = socketRef.current;
     if (!s) return;

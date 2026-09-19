@@ -5,10 +5,40 @@ const SOCKET_URL =
   (typeof window !== "undefined" && window.location.hostname === "localhost"
     ? "http://localhost:5000"
     : undefined);
+let globalSocket = null;
+const getSocket = () => {
+  if (globalSocket && globalSocket.connected) return globalSocket;
+  if (!SOCKET_URL) return null;
+
+  globalSocket = io(SOCKET_URL, {
+    transports: ["websocket", "polling"],
+    reconnection: true,
+    reconnectionAttempts: Infinity,
+    reconnectionDelay: 500,
+    reconnectionDelayMax: 3000,
+    timeout: 10000,
+    autoConnect: true,
+  });
+  globalSocket.on("connect", () => {
+    console.log("[socket] connected", globalSocket.id);
+  });
+  globalSocket.on("disconnect", (reason) =>
+    console.log("[socket] disconnected:", reason)
+  );
+  globalSocket.on("connect_error", (err) =>
+    console.error("[socket] connect_error:", err.message)
+  );
+  globalSocket.io.on("reconnect", () => {
+    console.log("[socket] reconnected");
+  });
+
+  return globalSocket;
+};
+
 export const useSocket = (userId, handlers = {}) => {
-  const socketRef = useRef(null);
   const handlersRef = useRef(handlers);
   const userIdRef = useRef(userId);
+
   useEffect(() => {
     handlersRef.current = handlers;
     userIdRef.current = userId;
@@ -16,39 +46,31 @@ export const useSocket = (userId, handlers = {}) => {
 
   useEffect(() => {
     if (!userId) return;
-    if (!SOCKET_URL) {
-      console.error("[useSocket] VITE_SOCKET_URL is missing");
+    const socket = getSocket();
+    if (!socket) {
+      console.error("[useSocket] no SOCKET_URL");
       return;
     }
-    const socket = io(SOCKET_URL, {
-      transports: ["websocket", "polling"],
-      reconnection: true,
-      reconnectionAttempts: Infinity,
-      reconnectionDelay: 500,
-      reconnectionDelayMax: 3000,
-      timeout: 10000,
-    });
-    socketRef.current = socket;
-    socket.on("connect", () => {
-      console.log("[socket] connected", socket.id);
-      socket.emit("user:online", userIdRef.current.toString());
-    });
-    socket.on("disconnect", (reason) =>
-      console.log("[socket] disconnected:", reason)
-    );
-    socket.on("connect_error", (err) =>
-      console.error("[socket] connect_error:", err.message)
-    );
-    socket.io.on("reconnect", () => {
-      console.log("[socket] reconnected");
-      socket.emit("user:online", userIdRef.current.toString());
-    });
 
+    // Tell server we're online (only if actually connected)
+    const announce = () => {
+      socket.emit("user:online", userIdRef.current.toString());
+      console.log("[socket] announced online:", userIdRef.current);
+    };
+
+    if (socket.connected) {
+      announce();
+    } else {
+      socket.once("connect", announce);
+    }
+    const bound = {};
     const bind = (event, key) => {
-      socket.on(event, (...args) => {
-        const fn = handlersRef.current?.[key];
-        if (typeof fn === "function") fn(...args);
-      });
+      const fn = (...args) => {
+        const h = handlersRef.current?.[key];
+        if (typeof h === "function") h(...args);
+      };
+      bound[event] = fn;
+      socket.on(event, fn);
     };
 
     bind("message:receive", "onMessageReceive");
@@ -73,36 +95,20 @@ export const useSocket = (userId, handlers = {}) => {
     bind("request:accepted", "onRequestAccepted");
     bind("request:declined", "onRequestDeclined");
 
+    // Re-announce when page comes back to focus
     const onFocus = () => {
-      if (!socket.connected) socket.connect();
-      else socket.emit("user:online", userIdRef.current.toString());
-    };
-    const onVisibility = () => {
-      if (document.visibilityState === "visible") onFocus();
+      if (!socket.connected) {
+        socket.connect();
+      } else {
+        socket.emit("user:online", userIdRef.current.toString());
+      }
     };
     window.addEventListener("focus", onFocus);
-    document.addEventListener("visibilitychange", onVisibility);
-
     return () => {
-      console.log("[useSocket] cleanup");
       window.removeEventListener("focus", onFocus);
-      document.removeEventListener("visibilitychange", onVisibility);
-      [
-        "connect", "disconnect", "connect_error",
-        "message:receive", "message:sent", "users:online",
-        "typing:start", "typing:stop",
-        "messages:read", "messages:delivered",
-        "call:incoming",
-        "room:message:receive", "room:message:sent",
-        "room:typing:start", "room:typing:stop",
-        "message:reaction:update", "message:deleted", "call:log:new",
-        "room:read:update", "scheduled:queued", "scheduled:flushed",
-        "request:received", "request:accepted", "request:declined",
-      ].forEach((ev) => socket.off(ev));
-      socket.disconnect();
-      socketRef.current = null;
+      Object.keys(bound).forEach((ev) => socket.off(ev, bound[ev]));
     };
   }, [userId]);
 
-  return socketRef;
+  return { current: globalSocket };
 };

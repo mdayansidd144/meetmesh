@@ -123,7 +123,7 @@ export const usePushNotifications = (user) => {
       }
     };
     check();
-  }, [supported, user]);
+  }, [supported, user?._id]);
 
   return { supported, permission, subscribed, busy, enable, disable, test };
 };
