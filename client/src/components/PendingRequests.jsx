@@ -2,14 +2,11 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import axios from "axios";
 import { X, Inbox } from "lucide-react";
-
 const API = import.meta.env.VITE_API_URL;
-
 export default function PendingRequests({ onClose, onAccepted }) {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(null);
-
   const load = () => {
     setLoading(true);
     axios
@@ -52,12 +49,13 @@ export default function PendingRequests({ onClose, onAccepted }) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[250] flex items-center justify-center p-4"
+      className="fixed inset-0 z-[250] flex items-center justify-center p-2"
       style={{ backgroundColor: "rgba(0,0,0,0.75)" }}
       onClick={onClose}
     >
+
       <div
-        className="w-full max-w-md max-h-[80vh] flex flex-col rounded-2xl fade-up"
+        className="w-full max-w-md min-h-[220px] max-h-[90vh] flex flex-col rounded-2xl fade-up"
         style={{
           backgroundColor: "#0f172e",
           border: "1px solid rgba(255,255,255,0.10)",
@@ -66,7 +64,7 @@ export default function PendingRequests({ onClose, onAccepted }) {
       >
         {/* Header */}
         <div
-          className="px-5 py-4 flex items-center justify-between"
+          className="px-5 py-4 flex items-center justify-between flex-shrink-0"
           style={{ borderBottom: "1px solid rgba(255,255,255,0.10)" }}
         >
           <h3 className="text-base font-bold text-white flex items-center gap-2">
@@ -87,7 +85,7 @@ export default function PendingRequests({ onClose, onAccepted }) {
           </button>
         </div>
 
-        {/* Body */}
+        {/* Body — grows with content, scrolls at 90vh */}
         <div className="flex-1 overflow-y-auto scroll-thin p-3">
           {loading ? (
             <p className="text-xs text-blue-100/60 text-center py-6">
@@ -114,28 +112,33 @@ export default function PendingRequests({ onClose, onAccepted }) {
                       border: "1px solid rgba(255,255,255,0.06)",
                     }}
                   >
-                    {/* User row */}
-                    <div className="flex items-center gap-3 mb-3">
+                    <div className="flex items-center gap-3">
                       {r.from.avatar ? (
                         <img
                           src={r.from.avatar}
                           alt=""
                           referrerPolicy="no-referrer"
-                          className="w-11 h-11 rounded-full object-cover border border-white/20 flex-shrink-0"
+                          className="w-12 h-12 rounded-full object-cover border border-white/20 flex-shrink-0"
                         />
                       ) : (
-                        <div className="w-11 h-11 rounded-full avatar-sapphire text-base flex items-center justify-center flex-shrink-0">
+                        <div className="w-12 h-12 rounded-full avatar-sapphire text-base flex items-center justify-center flex-shrink-0">
                           {initial(r.from.username)}
                         </div>
                       )}
+
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-white truncate">
                           {r.from.username}
                         </p>
-                        <p className="text-[11px] text-blue-100/50">
-                          {new Date(r.createdAt).toLocaleDateString([], {
-                            month: "short",
+                        <p className="text-xs text-blue-100/60 mt-0.5 line-clamp-2 break-words">
+                          {r.message
+                            ? `"${r.message}"`
+                            : "Wants to connect with you"}
+                        </p>
+                        <p className="text-[10px] text-blue-100/40 mt-1">
+                          {new Date(r.createdAt).toLocaleString([], {
                             day: "numeric",
+                            month: "short",
                             hour: "2-digit",
                             minute: "2-digit",
                           })}
@@ -143,8 +146,7 @@ export default function PendingRequests({ onClose, onAccepted }) {
                       </div>
                     </div>
 
-                    {/* Accept / Reject buttons */}
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 mt-3">
                       <button
                         onClick={() => accept(r.requestId)}
                         disabled={busy}

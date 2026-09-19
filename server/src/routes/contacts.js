@@ -135,20 +135,74 @@ router.get("/status/:userId", protect, async (req, res) => {
 router.get("/search", protect, async (req, res) => {
   try {
     const raw = (req.query.q || "").trim();
-    if (raw.length < 2) return res.json({ results: [] });
+
+    // Reject bare "@", "@x", or single-char queries
+    const hasAt = raw.includes("@");
+    if (hasAt) {
+      const beforeAt = raw.split("@")[0];
+      const afterAt = raw.split("@")[1] || "";
+      // Require at least 2 chars on one side of the @
+      if (beforeAt.length < 2 && afterAt.length < 2) {
+        return res.json({ results: [] });
+      }
+    } else {
+      // No @ — require at least 2 chars
+      if (raw.length < 2) return res.json({ results: [] });
+    }
 
     const safe = raw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const me = req.user._id;
 
-    const users = await User.find({
+    // Two separate queries so privacy fields can differ per match type
+    const usernameMatches = await User.find({
       _id: { $ne: me },
-      username: { $regex: `^${safe}`, $options: "i" },
+      username: { $regex: safe, $options: "i" },
       "settings.privacy.discoverable": "everyone",
     })
-      .select("_id username avatar")
-      .limit(10)
+      .select("_id username avatar email")
+      .limit(30)
       .lean();
 
+    const emailMatches = hasAt
+      ? await User.find({
+          _id: { $ne: me },
+          email: { $regex: safe, $options: "i" },
+          "settings.privacy.discoverableByEmail": "everyone",
+        })
+        .select("_id username avatar email")
+        .limit(30)
+        .lean()
+      : [];
+
+    // Deduplicate — same user matched by both queries should appear once
+    const byId = new Map();
+    [...usernameMatches, ...emailMatches].forEach((u) => {
+      byId.set(u._id.toString(), u);
+    });
+    const users = [...byId.values()];
+
+    // Rank: prefix matches on username → prefix matches on email → shortest → alphabetical
+    const q = raw.toLowerCase();
+    users.sort((a, b) => {
+      const aUserPrefix = a.username.toLowerCase().startsWith(q) ? 0 : 1;
+      const bUserPrefix = b.username.toLowerCase().startsWith(q) ? 0 : 1;
+      if (aUserPrefix !== bUserPrefix) return aUserPrefix - bUserPrefix;
+
+      const aEmailPrefix =
+        hasAt && a.email.toLowerCase().startsWith(q) ? 0 : 1;
+      const bEmailPrefix =
+        hasAt && b.email.toLowerCase().startsWith(q) ? 0 : 1;
+      if (aEmailPrefix !== bEmailPrefix) return aEmailPrefix - bEmailPrefix;
+
+      if (a.username.length !== b.username.length) {
+        return a.username.length - b.username.length;
+      }
+      return a.username.localeCompare(b.username);
+    });
+
+    const trimmed = users.slice(0, 20);
+
+    // Blocked-user filter (both directions)
     const blockedByMe = (req.user.blockedUsers || []).map(String);
     const blockedMe = await User.find({ blockedUsers: me })
       .select("_id")
@@ -158,8 +212,11 @@ router.get("/search", protect, async (req, res) => {
       ...blockedMe.map((u) => u._id.toString()),
     ]);
 
-    const filtered = users.filter((u) => !excludeSet.has(u._id.toString()));
+    const filtered = trimmed.filter(
+      (u) => !excludeSet.has(u._id.toString())
+    );
 
+    // Attach relationship status
     const results = await Promise.all(
       filtered.map(async (u) => {
         const c = await Contact.findOne({
@@ -180,10 +237,16 @@ router.get("/search", protect, async (req, res) => {
           } else status = "declined";
         }
 
+        // Return the email only if it matched the query (so we don't leak it otherwise)
+        const emailLower = u.email?.toLowerCase() || "";
+        const matchedEmail =
+          hasAt && emailLower.includes(q) ? u.email : null;
+
         return {
           _id: u._id,
           username: u.username,
           avatar: u.avatar,
+          matchedEmail,
           status,
         };
       })
@@ -214,7 +277,7 @@ router.post("/request", protect, async (req, res) => {
         };
 
     const target = await User.findOne(query).select(
-      "_id username settings.privacy.discoverable blockedUsers"
+      "_id username settings.privacy.discoverable settings.privacy.discoverableByEmail blockedUsers"
     );
     if (!target) {
       return res.status(404).json({
@@ -240,7 +303,10 @@ router.post("/request", protect, async (req, res) => {
       });
     }
 
-    const disc = target.settings?.privacy?.discoverable || "everyone";
+    // Privacy gate depends on how we found them
+    const disc = isEmail
+      ? target.settings?.privacy?.discoverableByEmail || "everyone"
+      : target.settings?.privacy?.discoverable || "everyone";
 
     if (disc === "nobody") {
       return res.status(403).json({

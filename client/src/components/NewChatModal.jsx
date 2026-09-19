@@ -32,7 +32,17 @@ export default function NewChatModal({ onClose, onRequestSent }) {
     requestRef.current = controller;
 
     const q = debounced.trim();
-    if (q.length < 2 || q.includes("@")) {
+
+    // Same guard as the backend — don't search bare "@" or too-short strings
+    let shouldSearch = false;
+    if (q.includes("@")) {
+      const [before, after = ""] = q.split("@");
+      shouldSearch = before.length >= 2 || after.length >= 2;
+    } else {
+      shouldSearch = q.length >= 2;
+    }
+
+    if (!shouldSearch) {
       setResults([]);
       setSearching(false);
       return;
@@ -130,12 +140,12 @@ export default function NewChatModal({ onClose, onRequestSent }) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[250] flex items-center justify-center p-4"
+      className="fixed inset-0 z-[250] flex items-center justify-center p-2"
       style={{ backgroundColor: "rgba(0,0,0,0.75)" }}
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md max-h-[80vh] flex flex-col rounded-2xl fade-up"
+        className="w-full max-w-md h-[95vh] flex flex-col rounded-2xl fade-up"
         style={{
           backgroundColor: "#0f172e",
           border: "1px solid rgba(255,255,255,0.10)",
@@ -143,7 +153,7 @@ export default function NewChatModal({ onClose, onRequestSent }) {
         onClick={(e) => e.stopPropagation()}
       >
         <div
-          className="px-5 py-4 flex items-center justify-between"
+          className="px-5 py-4 flex items-center justify-between flex-shrink-0"
           style={{ borderBottom: "1px solid rgba(255,255,255,0.10)" }}
         >
           <h3 className="text-base font-bold text-white flex items-center gap-2">
@@ -159,10 +169,10 @@ export default function NewChatModal({ onClose, onRequestSent }) {
           </button>
         </div>
 
-        <div className="p-5 pb-3">
+        <div className="p-5 pb-3 flex-shrink-0">
           <p className="text-sm text-blue-100/70 mb-3">
-            Search by <b className="text-blue-200">username</b>, or paste an{" "}
-            <b className="text-blue-200">email</b> to send a direct request.
+            Search by <b className="text-blue-200">username</b> or{" "}
+            <b className="text-blue-200">email</b>. Type at least 2 characters.
           </p>
 
           <form onSubmit={submit}>
@@ -180,7 +190,7 @@ export default function NewChatModal({ onClose, onRequestSent }) {
                   setStatus(null);
                   setMessage("");
                 }}
-                placeholder="Search username or paste email"
+                placeholder="Search username or email"
                 disabled={status === "loading"}
               />
             </div>
@@ -225,8 +235,11 @@ export default function NewChatModal({ onClose, onRequestSent }) {
                       <p className="text-sm font-semibold text-white truncate">
                         {u.username}
                       </p>
-                      <p className="text-[11px] text-blue-100/50">
-                        {isAccepted
+                      <p className="text-[11px] text-blue-100/50 truncate">
+                        {/* Show the matched email if search matched on email */}
+                        {u.matchedEmail
+                          ? u.matchedEmail
+                          : isAccepted
                           ? "Already contacts — tap to open chat"
                           : isPending
                           ? u.status === "outgoing-pending"
@@ -256,8 +269,7 @@ export default function NewChatModal({ onClose, onRequestSent }) {
 
           {!searching &&
             results.length === 0 &&
-            input.trim().length >= 2 &&
-            !looksLikeEmail && (
+            input.trim().length >= 2 && (
               <p className="text-xs text-blue-100/50 text-center py-6">
                 No users found matching "{input.trim()}"
               </p>
@@ -300,10 +312,10 @@ export default function NewChatModal({ onClose, onRequestSent }) {
         </div>
 
         <div
-          className="px-5 py-4 text-[11px] text-blue-100/40"
+          className="px-5 py-4 text-[11px] text-blue-100/40 flex-shrink-0"
           style={{ borderTop: "1px solid rgba(255,255,255,0.10)" }}
         >
-          Only users who have made themselves discoverable appear in search.
+          Search respects each user's privacy settings.
         </div>
       </div>
     </div>,

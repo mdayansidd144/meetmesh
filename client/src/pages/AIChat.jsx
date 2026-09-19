@@ -3,12 +3,9 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { ArrowLeft, Send, Trash2, Sparkles } from "lucide-react";
 import ZenithGlyph from "../components/ZenithGlyph";
-
 const API = import.meta.env.VITE_API_URL;
-
 export default function AIChat() {
   const navigate = useNavigate();
-
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
@@ -16,12 +13,74 @@ export default function AIChat() {
   const [aiUser, setAiUser] = useState(null);
   const [error, setError] = useState("");
   const endRef = useRef(null);
+  const [isLight, setIsLight] = useState(
+    typeof document !== "undefined" &&
+      document.documentElement.classList.contains("theme-light")
+  );
 
-  // Log any crash directly to the console so we can see it
   useEffect(() => {
-    console.log("[AIChat] mounted");
-    return () => console.log("[AIChat] unmounted");
+    const el = document.documentElement;
+    const observer = new MutationObserver(() => {
+      setIsLight(el.classList.contains("theme-light"));
+    });
+    observer.observe(el, { attributes: true, attributeFilter: ["class"] });
+    return () => observer.disconnect();
   }, []);
+
+  // Colors — mirror the html.theme-light rules in index.css
+  const theme = isLight
+    ? {
+        pageBg: "#f4f5f7",
+        pageText: "#0b1220",
+        headerBg: "#eaf1fe",
+        headerBorder: "rgba(59, 130, 246, 0.14)",
+        subtleText: "rgba(15, 23, 42, 0.60)",
+        headingGradient:
+          "linear-gradient(90deg, #3b82f6, #2563eb, #60a5fa)",
+        aiBubbleBg: "#ffffff",
+        aiBubbleBorder: "rgba(15, 23, 42, 0.10)",
+        aiBubbleText: "#0b1220",
+        aiTimeText: "rgba(15, 23, 42, 0.50)",
+        userBubbleBg: "linear-gradient(135deg, #22c55e, #15803d)",
+        userTimeText: "rgba(255, 255, 255, 0.75)",
+        cursorColor: "#2563eb",
+        errorColor: "#dc2626",
+        errorBg: "rgba(220, 38, 38, 0.08)",
+        errorBorder: "rgba(220, 38, 38, 0.20)",
+        inputBarBg: "#f4f5f7",
+        inputBarBorder: "rgba(15, 23, 42, 0.08)",
+        inputBg: "#ffffff",
+        inputBorder: "rgba(15, 23, 42, 0.10)",
+        inputText: "#0b1220",
+        inputPlaceholder: "rgba(15, 23, 42, 0.45)",
+        sendBg: "linear-gradient(135deg, #60a5fa, #3b82f6)",
+      }
+    : {
+        pageBg: "#0A0A1A",
+        pageText: "#E0E7FF",
+        headerBg: "rgba(15, 10, 30, 0.85)",
+        headerBorder: "rgba(139, 92, 246, 0.25)",
+        subtleText: "rgba(199, 210, 254, 0.7)",
+        headingGradient:
+          "linear-gradient(90deg, #A78BFA, #22D3EE, #FB7185)",
+        aiBubbleBg: "rgba(30, 27, 55, 0.95)",
+        aiBubbleBorder: "rgba(139, 92, 246, 0.3)",
+        aiBubbleText: "#E0E7FF",
+        aiTimeText: "rgba(199,210,254,0.55)",
+        userBubbleBg: "linear-gradient(135deg, #6366F1, #4F46E5)",
+        userTimeText: "rgba(255, 255, 255, 0.7)",
+        cursorColor: "#22D3EE",
+        errorColor: "#FB7185",
+        errorBg: "rgba(251, 113, 133, 0.1)",
+        errorBorder: "rgba(251, 113, 133, 0.25)",
+        inputBarBg: "rgba(15, 10, 30, 0.85)",
+        inputBarBorder: "rgba(139, 92, 246, 0.25)",
+        inputBg: "rgba(20, 18, 40, 0.95)",
+        inputBorder: "rgba(139, 92, 246, 0.35)",
+        inputText: "#E0E7FF",
+        inputPlaceholder: "rgba(199,210,254,0.45)",
+        sendBg: "linear-gradient(135deg, #8B5CF6, #06B6D4)",
+      };
 
   // Load AI user + existing history
   useEffect(() => {
@@ -179,13 +238,18 @@ export default function AIChat() {
   return (
     <div
       className="h-screen flex flex-col"
-      style={{ backgroundColor: "#0A0A1A", color: "#E0E7FF" }}
+      style={{
+        backgroundColor: theme.pageBg,
+        color: theme.pageText,
+        transition: "background-color 0.45s ease, color 0.45s ease",
+      }}
     >
       <header
         className="px-4 py-3 flex items-center gap-3 safe-top"
         style={{
-          backgroundColor: "rgba(15, 10, 30, 0.85)",
-          borderBottom: "1px solid rgba(139, 92, 246, 0.25)",
+          backgroundColor: theme.headerBg,
+          borderBottom: `1px solid ${theme.headerBorder}`,
+          transition: "background-color 0.3s ease, border-color 0.3s ease",
         }}
       >
         <button
@@ -197,11 +261,14 @@ export default function AIChat() {
         </button>
         <ZenithGlyph size={40} />
         <div className="flex-1 min-w-0">
-          <h2 className="text-base font-bold text-white flex items-center gap-2">
+          <h2
+            className="text-base font-bold flex items-center gap-2"
+            style={{ color: theme.pageText }}
+          >
             Ask Zenith AI
             <Sparkles className="w-3.5 h-3.5" style={{ color: "#FB7185" }} />
           </h2>
-          <p className="text-[11px]" style={{ color: "rgba(199,210,254,0.7)" }}>
+          <p className="text-[11px]" style={{ color: theme.subtleText }}>
             {sending ? "Thinking…" : "Powered by Groq"}
           </p>
         </div>
@@ -222,7 +289,7 @@ export default function AIChat() {
             <h3
               className="mt-5 text-2xl"
               style={{
-                background: "linear-gradient(90deg, #A78BFA, #22D3EE, #FB7185)",
+                background: theme.headingGradient,
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
                 backgroundClip: "text",
@@ -232,7 +299,7 @@ export default function AIChat() {
             </h3>
             <p
               className="text-sm mt-2 max-w-sm"
-              style={{ color: "rgba(199,210,254,0.75)" }}
+              style={{ color: theme.subtleText }}
             >
               Ask anything. Zenith keeps context of this conversation.
             </p>
@@ -258,11 +325,11 @@ export default function AIChat() {
                 }
                 style={
                   mine
-                    ? { background: "linear-gradient(135deg, #6366F1, #4F46E5)" }
+                    ? { background: theme.userBubbleBg }
                     : {
-                        backgroundColor: "rgba(30, 27, 55, 0.95)",
-                        border: "1px solid rgba(139, 92, 246, 0.3)",
-                        color: "#E0E7FF",
+                        backgroundColor: theme.aiBubbleBg,
+                        border: `1px solid ${theme.aiBubbleBorder}`,
+                        color: theme.aiBubbleText,
                       }
                 }
               >
@@ -272,9 +339,7 @@ export default function AIChat() {
                 <p
                   className="text-[10px] mt-1"
                   style={{
-                    color: mine
-                      ? "rgba(255,255,255,0.7)"
-                      : "rgba(199,210,254,0.55)",
+                    color: mine ? theme.userTimeText : theme.aiTimeText,
                   }}
                 >
                   {new Date(m.createdAt).toLocaleTimeString([], {
@@ -295,9 +360,9 @@ export default function AIChat() {
             <div
               className="rounded-2xl rounded-bl-md px-4 py-2.5 max-w-[75%]"
               style={{
-                backgroundColor: "rgba(30, 27, 55, 0.95)",
-                border: "1px solid rgba(139, 92, 246, 0.3)",
-                color: "#E0E7FF",
+                backgroundColor: theme.aiBubbleBg,
+                border: `1px solid ${theme.aiBubbleBorder}`,
+                color: theme.aiBubbleText,
               }}
             >
               {streamingText ? (
@@ -305,22 +370,28 @@ export default function AIChat() {
                   {streamingText}
                   <span
                     className="inline-block w-1.5 h-4 ml-1 align-middle animate-pulse"
-                    style={{ backgroundColor: "#22D3EE" }}
+                    style={{ backgroundColor: theme.cursorColor }}
                   />
                 </p>
               ) : (
                 <div className="flex items-center gap-1 py-1">
                   <span
                     className="w-1.5 h-1.5 rounded-full animate-bounce"
-                    style={{ backgroundColor: "#22D3EE" }}
+                    style={{ backgroundColor: theme.cursorColor }}
                   />
                   <span
                     className="w-1.5 h-1.5 rounded-full animate-bounce"
-                    style={{ backgroundColor: "#22D3EE", animationDelay: "150ms" }}
+                    style={{
+                      backgroundColor: theme.cursorColor,
+                      animationDelay: "150ms",
+                    }}
                   />
                   <span
                     className="w-1.5 h-1.5 rounded-full animate-bounce"
-                    style={{ backgroundColor: "#22D3EE", animationDelay: "300ms" }}
+                    style={{
+                      backgroundColor: theme.cursorColor,
+                      animationDelay: "300ms",
+                    }}
                   />
                 </div>
               )}
@@ -332,9 +403,9 @@ export default function AIChat() {
           <p
             className="text-center text-xs rounded-xl px-3 py-2"
             style={{
-              color: "#FB7185",
-              backgroundColor: "rgba(251, 113, 133, 0.1)",
-              border: "1px solid rgba(251, 113, 133, 0.25)",
+              color: theme.errorColor,
+              backgroundColor: theme.errorBg,
+              border: `1px solid ${theme.errorBorder}`,
             }}
           >
             {error}
@@ -348,15 +419,16 @@ export default function AIChat() {
         onSubmit={send}
         className="px-4 py-3 safe-bottom"
         style={{
-          backgroundColor: "rgba(15, 10, 30, 0.85)",
-          borderTop: "1px solid rgba(139, 92, 246, 0.25)",
+          backgroundColor: theme.inputBarBg,
+          borderTop: `1px solid ${theme.inputBarBorder}`,
+          transition: "background-color 0.3s ease, border-color 0.3s ease",
         }}
       >
         <div
           className="flex items-center gap-2 rounded-2xl px-3 py-2"
           style={{
-            backgroundColor: "rgba(20, 18, 40, 0.95)",
-            border: "1px solid rgba(139, 92, 246, 0.35)",
+            backgroundColor: theme.inputBg,
+            border: `1px solid ${theme.inputBorder}`,
           }}
         >
           <input
@@ -364,7 +436,7 @@ export default function AIChat() {
             onChange={(e) => setText(e.target.value)}
             placeholder="Ask Zenith anything…"
             className="flex-1 bg-transparent outline-none text-sm"
-            style={{ color: "#E0E7FF" }}
+            style={{ color: theme.inputText }}
             disabled={sending}
           />
           <button
@@ -372,7 +444,7 @@ export default function AIChat() {
             disabled={!text.trim() || sending}
             className="w-10 h-10 rounded-xl text-white flex items-center justify-center transition disabled:opacity-40"
             style={{
-              background: "linear-gradient(135deg, #8B5CF6, #06B6D4)",
+              background: theme.sendBg,
             }}
             aria-label="Send"
           >

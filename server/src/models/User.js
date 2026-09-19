@@ -70,8 +70,14 @@ const userSchema = new mongoose.Schema(
           enum: ["everyone", "contacts", "nobody"],
           default: "everyone",
         },
-        // ✅ NEW — controls search visibility & incoming contact requests
+        // Search by username
         discoverable: {
+          type: String,
+          enum: ["everyone", "contacts", "nobody"],
+          default: "everyone",
+        },
+        // ✅ NEW — search by email (or Gmail) — default everyone
+        discoverableByEmail: {
           type: String,
           enum: ["everyone", "contacts", "nobody"],
           default: "everyone",

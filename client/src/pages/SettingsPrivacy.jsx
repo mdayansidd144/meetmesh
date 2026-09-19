@@ -2,14 +2,17 @@ import { useAuth } from "../context/AuthContext";
 import SettingsHeader from "../components/SettingsHeader";
 import { Check } from "lucide-react";
 import { useState } from "react";
+
 const PRIVACY_OPTIONS = [
   { value: "everyone", label: "Everyone" },
   { value: "contacts", label: "My contacts" },
   { value: "nobody", label: "Nobody" },
 ];
+
 function Row({ label, description, value, onChange }) {
   const [open, setOpen] = useState(false);
-  const current = PRIVACY_OPTIONS.find((o) => o.value === value) || PRIVACY_OPTIONS[0];
+  const current =
+    PRIVACY_OPTIONS.find((o) => o.value === value) || PRIVACY_OPTIONS[0];
 
   return (
     <>
@@ -53,8 +56,7 @@ export default function SettingsPrivacy() {
   const { user, patchSettings } = useAuth();
   const privacy = user?.settings?.privacy || {};
 
-  const update = (key, value) =>
-    patchSettings("privacy", { [key]: value });
+  const update = (key, value) => patchSettings("privacy", { [key]: value });
 
   return (
     <div className="settings-page">
@@ -65,11 +67,19 @@ export default function SettingsPrivacy() {
       </p>
 
       <p className="settings-section-title">Discovery</p>
+
       <Row
-        label="Who can find me"
+        label="Who can find me by username"
         description="Control whether you appear in username search"
         value={privacy.discoverable || "everyone"}
         onChange={(v) => update("discoverable", v)}
+      />
+
+      <Row
+        label="Who can find me by email"
+        description="Allow people to find you by typing your email or Gmail"
+        value={privacy.discoverableByEmail || "everyone"}
+        onChange={(v) => update("discoverableByEmail", v)}
       />
 
       <p className="settings-section-title">Visibility</p>

@@ -246,5 +246,19 @@ router.post("/feedback", protect, async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 });
-
+router.post("/backfill-discoverable", protect, async (req, res) => {
+  try {
+    const result = await User.updateMany(
+      { "settings.privacy.discoverable": { $exists: false } },
+      { $set: { "settings.privacy.discoverable": "everyone" } }
+    );
+    res.json({
+      ok: true,
+      matched: result.matchedCount,
+      modified: result.modifiedCount,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
 export default router;
