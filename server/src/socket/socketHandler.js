@@ -6,7 +6,6 @@ import { sendPushToUser } from "../routes/push.js";
 
 export const onlineUsers = new Map();
 export const socketToUser = new Map();
-
 const addSocket = (userId, socketId) => {
   const key = userId.toString();
   const set = onlineUsers.get(key) || new Set();
@@ -36,7 +35,6 @@ export const getUserSocket = (userId) => {
   return [...set][0];
 };
 
-// ✅ Round 2: shared contact check
 const areContacts = async (meId, otherId) => {
   const c = await Contact.findOne({
     status: "accepted",
@@ -49,9 +47,10 @@ const areContacts = async (meId, otherId) => {
 };
 
 export const socketHandler = (io) => {
-  io.on("connection", (socket) => {
-    socket.on("user:online", async (userId) => {
-      if (!userId) return;
+  io.on("connection", async (socket) => {
+    const userId = socket.handshake.query?.userId;
+
+    if (userId) {
       const key = userId.toString();
       addSocket(key, socket.id);
       socket.join(`user:${key}`);
@@ -76,6 +75,18 @@ export const socketHandler = (io) => {
       }
 
       io.emit("users:online", Array.from(onlineUsers.keys()));
+    }
+
+    // Legacy support: some clients may still emit this
+    socket.on("user:online", async (legacyUserId) => {
+      if (!legacyUserId) return;
+      const key = legacyUserId.toString();
+      if (!socketToUser.has(socket.id)) {
+        addSocket(key, socket.id);
+        socket.join(`user:${key}`);
+        await User.findByIdAndUpdate(key, { online: true });
+        io.emit("users:online", Array.from(onlineUsers.keys()));
+      }
     });
 
     socket.on("room:join", ({ roomId }) => {
@@ -90,7 +101,6 @@ export const socketHandler = (io) => {
       "message:send",
       async ({ sender, receiver, text, tempId, replyTo, attachment, scheduledFor }) => {
         try {
-          // ✅ Round 2: enforce contact check
           const ok = await areContacts(sender, receiver);
           if (!ok) {
             socket.emit("message:error", {
@@ -150,9 +160,7 @@ export const socketHandler = (io) => {
           } else {
             (async () => {
               try {
-                const senderUser = await User.findById(sender).select(
-                  "username"
-                );
+                const senderUser = await User.findById(sender).select("username");
                 const preview =
                   text && text.trim()
                     ? text.slice(0, 120)

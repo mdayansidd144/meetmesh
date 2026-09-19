@@ -1,13 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import axios from "axios";
-
 const API = import.meta.env.VITE_API_URL;
-
 const urlBase64ToUint8Array = (base64String) => {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding)
-    .replace(/-/g, "+")
-    .replace(/_/g, "/");
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
   const raw = window.atob(base64);
   const output = new Uint8Array(raw.length);
   for (let i = 0; i < raw.length; ++i) {
@@ -15,13 +11,13 @@ const urlBase64ToUint8Array = (base64String) => {
   }
   return output;
 };
-
 export const usePushNotifications = (user) => {
   const [supported, setSupported] = useState(false);
   const [permission, setPermission] = useState("default");
   const [subscribed, setSubscribed] = useState(false);
   const [busy, setBusy] = useState(false);
   const registrationRef = useRef(null);
+  const userId = user?._id;
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -33,16 +29,14 @@ export const usePushNotifications = (user) => {
     if (ok) setPermission(Notification.permission);
   }, []);
 
-  const ensureRegistration = async () => {
+  const ensureRegistration = useCallback(async () => {
     if (!registrationRef.current) {
-      registrationRef.current = await navigator.serviceWorker.register(
-        "/sw.js"
-      );
+      registrationRef.current = await navigator.serviceWorker.register("/sw.js");
     }
     return registrationRef.current;
-  };
+  }, []);
 
-  const enable = async () => {
+  const enable = useCallback(async () => {
     if (!supported) return false;
     setBusy(true);
     try {
@@ -78,18 +72,16 @@ export const usePushNotifications = (user) => {
     } finally {
       setBusy(false);
     }
-  };
+  }, [supported, ensureRegistration]);
 
-  const disable = async () => {
+  const disable = useCallback(async () => {
     if (!supported) return;
     setBusy(true);
     try {
       const reg = await navigator.serviceWorker.ready;
       const sub = await reg.pushManager.getSubscription();
       if (sub) {
-        await axios.post(`${API}/push/unsubscribe`, {
-          endpoint: sub.endpoint,
-        });
+        await axios.post(`${API}/push/unsubscribe`, { endpoint: sub.endpoint });
         await sub.unsubscribe();
       } else {
         await axios.post(`${API}/push/unsubscribe`, {});
@@ -100,30 +92,34 @@ export const usePushNotifications = (user) => {
     } finally {
       setBusy(false);
     }
-  };
+  }, [supported]);
 
-  const test = async () => {
+  const test = useCallback(async () => {
     try {
       const { data } = await axios.post(`${API}/push/test`);
       return data.sent;
     } catch {
       return 0;
     }
-  };
+  }, []);
 
   useEffect(() => {
-    if (!supported || !user) return;
+    if (!supported || !userId) return;
+    let cancelled = false;
     const check = async () => {
       try {
         const reg = await navigator.serviceWorker.ready;
         const sub = await reg.pushManager.getSubscription();
-        setSubscribed(!!sub);
+        if (!cancelled) setSubscribed(!!sub);
       } catch {
-        setSubscribed(false);
+        if (!cancelled) setSubscribed(false);
       }
     };
     check();
-  }, [supported, user?._id]);
+    return () => {
+      cancelled = true;
+    };
+  }, [supported, userId]);
 
   return { supported, permission, subscribed, busy, enable, disable, test };
 };

@@ -2,6 +2,8 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
+import { useLockContext } from "../context/LockContext";
+import LockScreen from "./LockScreen";
 import { useTranslation } from "../i18n";
 import ReactionDetails from "../components/ReactionDetails";
 import { useSocket } from "../hooks/useSocket";
@@ -60,6 +62,8 @@ const makeTempId = () =>
 export default function Chat() {
   const { user, setChatTheme, setChatBackground, clearChatBackground } =
     useAuth();
+  const lock = useLockContext();
+
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useTranslation();
@@ -114,7 +118,7 @@ export default function Chat() {
 
   const [isLight, setIsLight] = useState(
     typeof document !== "undefined" &&
-      document.documentElement.classList.contains("theme-light")
+      document.documentElement.classList.contains("theme-light"),
   );
 
   useEffect(() => {
@@ -126,8 +130,6 @@ export default function Chat() {
     return () => observer.disconnect();
   }, []);
 
-  // ✅ usePushNotifications — keyed by user._id only, so it won't re-run
-  // on every new `user` object reference from AuthContext
   const push = usePushNotifications(user);
   const pushSupported = push?.supported;
   const pushSubscribed = push?.subscribed;
@@ -202,12 +204,7 @@ export default function Chat() {
       setNotificationPromptChecked(true);
     }, 1500);
     return () => clearTimeout(timer);
-  }, [
-    user?._id,
-    pushSupported,
-    pushSubscribed,
-    notificationPromptChecked,
-  ]);
+  }, [user?._id, pushSupported, pushSubscribed, notificationPromptChecked]);
 
   useEffect(() => {
     if (!location.state) return;
@@ -390,8 +387,8 @@ export default function Chat() {
                 ...m,
                 status: m.read ? "read" : m.delivered ? "delivered" : "sent",
               };
-            })
-          )
+            }),
+          ),
         )
         .catch((err) => console.error(err));
     } else if (activeRef.current) {
@@ -408,8 +405,8 @@ export default function Chat() {
                 ...m,
                 status: m.read ? "read" : m.delivered ? "delivered" : "sent",
               };
-            })
-          )
+            }),
+          ),
         )
         .catch((err) => console.error(err));
     }
@@ -417,9 +414,11 @@ export default function Chat() {
 
   const handleMessageReceive = useCallback(
     (msg) => {
-      const senderFromList = usersRef.current.find((u) => u._id === msg.sender);
-      const isMine = msg.sender === user._id;
-      const senderIdStr = msg.sender?.toString?.() || msg.sender;
+      const senderIdStr = getSenderId(msg);
+      const senderFromList = usersRef.current.find(
+        (u) => u._id === senderIdStr,
+      );
+      const isMine = senderIdStr === user._id;
 
       setConversations((prev) => {
         const otherId = senderIdStr === user._id ? msg.receiver : senderIdStr;
@@ -449,7 +448,7 @@ export default function Chat() {
           reader: user._id,
           sender: senderIdStr,
         });
-      } else if (!isMine && !activeId) {
+      } else if (!isMine) {
         setToast({
           type: "message",
           title: senderFromList?.username || "New message",
@@ -457,8 +456,8 @@ export default function Chat() {
             msg.type === "text"
               ? msg.text
               : msg.type === "attachment"
-              ? "Sent an attachment"
-              : "New message",
+                ? "Sent an attachment"
+                : "New message",
           onClick: () => {
             setTab("threads");
             const contact = usersRef.current.find((u) => u._id === msg.sender);
@@ -470,7 +469,7 @@ export default function Chat() {
         });
       }
     },
-    [user._id]
+    [user._id],
   );
 
   const handleMessageSent = useCallback((msg) => {
@@ -484,8 +483,8 @@ export default function Chat() {
                 tempId: undefined,
                 status: msg.delivered ? "delivered" : "sent",
               }
-            : m
-        )
+            : m,
+        ),
       );
     }
   }, []);
@@ -512,11 +511,11 @@ export default function Chat() {
         prev.map((m) =>
           getSenderId(m) === user._id && m.receiver === by
             ? { ...m, read: true, delivered: true, status: "read" }
-            : m
-        )
+            : m,
+        ),
       );
     },
-    [user._id, getSenderId]
+    [user._id, getSenderId],
   );
 
   const handleMessagesDelivered = useCallback(
@@ -529,11 +528,11 @@ export default function Chat() {
                 delivered: true,
                 status: m.read ? "read" : "delivered",
               }
-            : m
-        )
+            : m,
+        ),
       );
     },
-    [user._id, getSenderId]
+    [user._id, getSenderId],
   );
 
   const handleIncomingCall = useCallback(
@@ -558,7 +557,7 @@ export default function Chat() {
         video,
       });
     },
-    []
+    [],
   );
 
   const handleRoomMessageReceive = useCallback(
@@ -588,12 +587,12 @@ export default function Chat() {
             msg.type === "text"
               ? msg.text
               : msg.type === "attachment"
-              ? "Sent an attachment"
-              : "New message",
+                ? "Sent an attachment"
+                : "New message",
         });
       }
     },
-    [user._id]
+    [user._id],
   );
 
   const handleRoomMessageSent = useCallback((msg) => {
@@ -603,8 +602,8 @@ export default function Chat() {
         prev.map((m) =>
           m.tempId === tempId
             ? { ...msg, tempId: undefined, status: "sent" }
-            : m
-        )
+            : m,
+        ),
       );
     }
   }, []);
@@ -619,7 +618,7 @@ export default function Chat() {
 
   const handleReactionUpdate = useCallback(({ messageId, reactions }) => {
     setMessages((prev) =>
-      prev.map((m) => (m._id === messageId ? { ...m, reactions } : m))
+      prev.map((m) => (m._id === messageId ? { ...m, reactions } : m)),
     );
   }, []);
 
@@ -639,22 +638,23 @@ export default function Chat() {
             msg.receiver === currentPeer._id));
       if (belongsHere) refetchCurrent();
     },
-    [refetchCurrent]
+    [refetchCurrent],
   );
 
   const handleRoomReadUpdate = useCallback(
     ({ reader, roomId }) => {
-      if (!activeRoomRef.current || activeRoomRef.current._id !== roomId) return;
+      if (!activeRoomRef.current || activeRoomRef.current._id !== roomId)
+        return;
       setMessages((prev) =>
         prev.map((m) => {
           if (getSenderId(m) === reader) return m;
           const existing = m.readBy || [];
           if (existing.includes(reader)) return m;
           return { ...m, readBy: [...existing, reader] };
-        })
+        }),
       );
     },
-    [getSenderId]
+    [getSenderId],
   );
 
   const handleScheduledQueued = useCallback(({ tempId, messageId }) => {
@@ -662,16 +662,16 @@ export default function Chat() {
       prev.map((m) =>
         m.tempId === tempId
           ? { ...m, tempId: undefined, _id: messageId, scheduled: true }
-          : m
-      )
+          : m,
+      ),
     );
   }, []);
 
   const handleScheduledFlushed = useCallback(({ messageId }) => {
     setMessages((prev) =>
       prev.map((m) =>
-        m._id === messageId ? { ...m, scheduled: false, status: "sent" } : m
-      )
+        m._id === messageId ? { ...m, scheduled: false, status: "sent" } : m,
+      ),
     );
   }, []);
 
@@ -779,7 +779,7 @@ export default function Chat() {
           const map = new Map();
           [...prev, ...fetched].forEach((m) => map.set(m._id, m));
           return Array.from(map.values()).sort(
-            (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
+            (a, b) => new Date(a.createdAt) - new Date(b.createdAt),
           );
         });
         socketRef.current?.emit("messages:read", {
@@ -805,7 +805,7 @@ export default function Chat() {
           const map = new Map();
           [...prev, ...fetched].forEach((m) => map.set(m._id, m));
           return Array.from(map.values()).sort(
-            (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
+            (a, b) => new Date(a.createdAt) - new Date(b.createdAt),
           );
         });
         socketRef.current?.emit("room:messages:read", {
@@ -875,7 +875,7 @@ export default function Chat() {
           const { data } = await axios.post(
             `${API}/attachments/upload`,
             formData,
-            { headers: { "Content-Type": "multipart/form-data" } }
+            { headers: { "Content-Type": "multipart/form-data" } },
           );
           sendWithAttachment(data);
         } catch (err) {
@@ -1209,7 +1209,7 @@ export default function Chat() {
 
   const sortedUsers = useMemo(() => {
     const filtered = users.filter((u) =>
-      u.username.toLowerCase().includes(search.toLowerCase())
+      u.username.toLowerCase().includes(search.toLowerCase()),
     );
     return filtered.sort((a, b) => {
       const aAt = conversations[a._id]?.lastAt || 0;
@@ -1220,7 +1220,7 @@ export default function Chat() {
 
   const sortedRooms = useMemo(() => {
     const filtered = rooms.filter((r) =>
-      r.name.toLowerCase().includes(search.toLowerCase())
+      r.name.toLowerCase().includes(search.toLowerCase()),
     );
     return filtered.sort((a, b) => {
       const aAt = roomPreviews[a._id]?.lastAt || 0;
@@ -1361,13 +1361,18 @@ export default function Chat() {
     const ids = m.readBy || [];
     const readers = ids
       .map(
-        (id) => users.find((u) => u._id === id) || { _id: id, username: "User" }
+        (id) =>
+          users.find((u) => u._id === id) || { _id: id, username: "User" },
       )
       .filter(Boolean);
     setReadByMessage({ readers });
   };
 
   const sidebarHidden = !!headerPeer;
+
+  if (lock.ready && lock.locked) {
+    return <LockScreen onUnlock={lock.unlock} />;
+  }
 
   return (
     <div className="h-screen w-screen relative overflow-hidden">
@@ -1406,13 +1411,13 @@ export default function Chat() {
       <div
         className={cn(
           "threads-shell",
-          tab === "threads" ? "threads-shell-active" : "threads-shell-hidden"
+          tab === "threads" ? "threads-shell-active" : "threads-shell-hidden",
         )}
       >
         <aside
           className={cn(
             "flex flex-col card-dark sidebar-mobile pb-20",
-            sidebarHidden && "hidden-mobile"
+            sidebarHidden && "hidden-mobile",
           )}
         >
           <div className="px-5 py-5 divider-dark flex items-center gap-3 safe-top">
@@ -1594,10 +1599,10 @@ export default function Chat() {
                               {isAccepted
                                 ? "Already a contact — tap to chat"
                                 : isPending
-                                ? u.status === "outgoing-pending"
-                                  ? "Request pending"
-                                  : "Sent you a request"
-                                : "Tap to send a request"}
+                                  ? u.status === "outgoing-pending"
+                                    ? "Request pending"
+                                    : "Sent you a request"
+                                  : "Tap to send a request"}
                             </p>
                           </div>
                         </button>
@@ -1707,7 +1712,7 @@ export default function Chat() {
                           <div
                             className={cn(
                               "w-11 h-11 rounded-full avatar-sapphire text-base",
-                              !isOnline && "avatar-offline-sapphire"
+                              !isOnline && "avatar-offline-sapphire",
                             )}
                           >
                             {initial(u.username)}
@@ -1756,7 +1761,7 @@ export default function Chat() {
         <main
           className={cn(
             "flex flex-col card-light chat-mobile",
-            !headerPeer && "hidden-mobile"
+            !headerPeer && "hidden-mobile",
           )}
         >
           {headerPeer ? (
@@ -1805,10 +1810,10 @@ export default function Chat() {
                         roomTyping || peerTyping
                           ? "text-blue-600"
                           : headerIsRoom
-                          ? "text-slate-500"
-                          : onlineIds.includes(active._id)
-                          ? "text-blue-600"
-                          : "text-slate-500"
+                            ? "text-slate-500"
+                            : onlineIds.includes(active._id)
+                              ? "text-blue-600"
+                              : "text-slate-500",
                       )}
                     >
                       {headerIsRoom
@@ -1817,10 +1822,10 @@ export default function Chat() {
                             n: activeRoom.members.length,
                           })
                         : peerTyping
-                        ? t("chat.header.typing")
-                        : onlineIds.includes(active._id)
-                        ? t("chat.header.active")
-                        : t("chat.header.lastSeen")}
+                          ? t("chat.header.typing")
+                          : onlineIds.includes(active._id)
+                            ? t("chat.header.active")
+                            : t("chat.header.lastSeen")}
                     </p>
                   </div>
                 </div>
@@ -1889,7 +1894,7 @@ export default function Chat() {
                   !user?.chatBackground &&
                     `chat-surface-split chat-theme-${
                       user?.chatTheme || "sapphire"
-                    }`
+                    }`,
                 )}
                 style={
                   user?.chatBackground
@@ -1935,7 +1940,7 @@ export default function Chat() {
                           m.type === "call_voice" || m.type === "call_video";
                         const isHighlight = inChat.highlightId === m._id;
                         const readByCount = (m.readBy || []).filter(
-                          (id) => id !== user._id
+                          (id) => id !== user._id,
                         ).length;
                         return (
                           <div key={m._id} data-message-id={m._id}>
@@ -1943,7 +1948,7 @@ export default function Chat() {
                               <div
                                 className={cn(
                                   "flex items-center gap-2 mt-3 mb-1",
-                                  mine ? "justify-end" : "justify-start"
+                                  mine ? "justify-end" : "justify-start",
                                 )}
                               >
                                 <p
@@ -1959,7 +1964,7 @@ export default function Chat() {
                             <div
                               className={cn(
                                 "flex flex-col",
-                                mine ? "items-end" : "items-start"
+                                mine ? "items-end" : "items-start",
                               )}
                             >
                               {isCall ? (
@@ -1975,7 +1980,7 @@ export default function Chat() {
                                     m.status === "sending" && "opacity-75",
                                     (highlightMessageId === m._id ||
                                       isHighlight) &&
-                                      "ring-2 ring-amber-400 ring-offset-2 ring-offset-transparent"
+                                      "ring-2 ring-amber-400 ring-offset-2 ring-offset-transparent",
                                   )}
                                 >
                                   {m.forwardedFrom && (
@@ -1984,7 +1989,7 @@ export default function Chat() {
                                         "text-[10px] italic mb-1",
                                         mine
                                           ? "text-white/70"
-                                          : "text-slate-500"
+                                          : "text-slate-500",
                                       )}
                                     >
                                       Forwarded
@@ -1994,13 +1999,13 @@ export default function Chat() {
                                     <div
                                       className={cn(
                                         "mb-2",
-                                        mine ? "reply-bar-out" : "reply-bar-in"
+                                        mine ? "reply-bar-out" : "reply-bar-in",
                                       )}
                                     >
                                       <p
                                         className={cn(
                                           "text-[11px] font-bold",
-                                          mine ? "text-white" : "text-blue-600"
+                                          mine ? "text-white" : "text-blue-600",
                                         )}
                                       >
                                         {m.replyTo.sender?.username || "User"}
@@ -2010,15 +2015,15 @@ export default function Chat() {
                                           "text-[12px] truncate",
                                           mine
                                             ? "text-white/85"
-                                            : "text-slate-700"
+                                            : "text-slate-700",
                                         )}
                                       >
                                         {m.replyTo.type &&
                                         m.replyTo.type !== "text"
                                           ? "Attachment"
                                           : m.replyTo.deletedAt
-                                          ? "Message deleted"
-                                          : m.replyTo.text}
+                                            ? "Message deleted"
+                                            : m.replyTo.text}
                                       </p>
                                     </div>
                                   )}
@@ -2036,7 +2041,7 @@ export default function Chat() {
                                   <div
                                     className={cn(
                                       "text-[10px] mt-1 flex items-center justify-end gap-1 font-medium",
-                                      mine ? "text-white/70" : "text-slate-500"
+                                      mine ? "text-white/70" : "text-slate-500",
                                     )}
                                   >
                                     {m.scheduled && (
@@ -2056,7 +2061,7 @@ export default function Chat() {
                                         {
                                           hour: "2-digit",
                                           minute: "2-digit",
-                                        }
+                                        },
                                       )}
                                     </span>
                                     {mine && !headerIsRoom && (
@@ -2072,7 +2077,7 @@ export default function Chat() {
                                     "text-[10px] mt-0.5 underline-offset-2 hover:underline",
                                     mine
                                       ? "text-slate-500 mr-1"
-                                      : "text-slate-500 ml-1"
+                                      : "text-slate-500 ml-1",
                                   )}
                                 >
                                   Seen by {readByCount}
@@ -2082,7 +2087,7 @@ export default function Chat() {
                                 <div
                                   className={cn(
                                     "flex gap-1 -mt-1 z-10",
-                                    mine ? "mr-2" : "ml-2"
+                                    mine ? "mr-2" : "ml-2",
                                   )}
                                 >
                                   {reactionChips.map((chip) => (
@@ -2105,7 +2110,7 @@ export default function Chat() {
                                         "px-2 py-0.5 rounded-full text-xs flex items-center gap-1 bg-white border shadow-md transition hover:scale-110",
                                         chip.mine
                                           ? "border-blue-500 bg-blue-50"
-                                          : "border-slate-200"
+                                          : "border-slate-200",
                                       )}
                                     >
                                       <span>{chip.emoji}</span>
@@ -2156,8 +2161,8 @@ export default function Chat() {
                         {replyTo.type && replyTo.type !== "text"
                           ? "Attachment"
                           : replyTo.deletedAt
-                          ? "Message deleted"
-                          : replyTo.text}
+                            ? "Message deleted"
+                            : replyTo.text}
                       </p>
                     </div>
                     <button

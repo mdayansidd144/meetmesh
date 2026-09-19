@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import axios from "axios";
 
 const API = import.meta.env.VITE_API_URL;
@@ -12,30 +12,36 @@ export const useLock = (user) => {
     hasWebauthn: false,
     pinLength: 4,
     voicePassphrase: "",
-    webauthn: {
-      credentialId: "",
-      rawIdBase64: "",
-      transports: [],
-    },
+    webauthn: { credentialId: "", rawIdBase64: "", transports: [] },
   });
   const [ready, setReady] = useState(false);
+  const checkedForUserRef = useRef(null);
 
   useEffect(() => {
     if (!user?._id) {
       setReady(true);
       return;
     }
+    if (checkedForUserRef.current === user._id) return;
+    checkedForUserRef.current = user._id;
+
+    let cancelled = false;
     axios
       .get(`${API}/security/me`)
       .then((r) => {
+        if (cancelled) return;
         setStatus(r.data);
-        // 🔇 Voice is temporarily disabled from the lock gate.
-        // It still saves to the DB, but doesn't trigger the lock screen.
         const hasAny = r.data.hasPin || r.data.hasWebauthn;
         setLocked(hasAny);
         setReady(true);
       })
-      .catch(() => setReady(true));
+      .catch(() => {
+        if (!cancelled) setReady(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [user?._id]);
 
   const verifyPin = useCallback(async (pin) => {
