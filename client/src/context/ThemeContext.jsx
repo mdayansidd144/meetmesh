@@ -25,4 +25,14 @@ export const ThemeProvider = ({ children }) => {
   );
 };
 
-export const useTheme = () => useContext(ThemeContext);
+export const useTheme = () => {
+  const ctx = useContext(ThemeContext);
+  if (!ctx) {
+    return {
+      theme: "dark",
+      setTheme: () => {},
+      toggleTheme: () => {},
+    };
+  }
+  return ctx;
+};

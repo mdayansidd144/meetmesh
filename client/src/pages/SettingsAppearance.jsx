@@ -1,9 +1,9 @@
 import { useAuth } from "../context/AuthContext";
-import { useTheme } from "../context/ThemeContext";
 import SettingsHeader from "../components/SettingsHeader";
 import SettingsToggle from "../components/SettingsToggle";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useEffect, useState } from "react";
 
 const THEMES = [
   { id: "sapphire", label: "Sapphire", color: "#60a5fa" },
@@ -18,8 +18,32 @@ const THEMES = [
 
 export default function SettingsAppearance() {
   const { user, setChatTheme, clearChatBackground } = useAuth();
-  const { theme, toggleTheme } = useTheme();
-  const isLight = theme === "light";
+
+  // ✅ Local state for light/dark toggle — no ThemeContext dependency
+  const [isLight, setIsLight] = useState(
+    typeof document !== "undefined" &&
+      document.documentElement.classList.contains("theme-light")
+  );
+
+  useEffect(() => {
+    const el = document.documentElement;
+    const observer = new MutationObserver(() => {
+      setIsLight(el.classList.contains("theme-light"));
+    });
+    observer.observe(el, { attributes: true, attributeFilter: ["class"] });
+    return () => observer.disconnect();
+  }, []);
+
+  const toggleLight = () => {
+    const el = document.documentElement;
+    if (el.classList.contains("theme-light")) {
+      el.classList.remove("theme-light");
+      localStorage.setItem("theme", "dark");
+    } else {
+      el.classList.add("theme-light");
+      localStorage.setItem("theme", "light");
+    }
+  };
 
   const pick = async (id) => {
     await setChatTheme(id);
@@ -67,7 +91,7 @@ export default function SettingsAppearance() {
             Use a soft grey background across all pages
           </p>
         </div>
-        <SettingsToggle checked={isLight} onChange={toggleTheme} />
+        <SettingsToggle checked={isLight} onChange={toggleLight} />
       </div>
     </div>
   );
