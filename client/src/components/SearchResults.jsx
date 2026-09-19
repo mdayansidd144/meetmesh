@@ -1,4 +1,5 @@
 import { cn, colorForUsername } from "@/lib/utils";
+
 export default function SearchResults({
   loading,
   results,
@@ -29,15 +30,12 @@ export default function SearchResults({
       {results.map((r) => {
         const isMine = r.sender?._id === currentUserId;
         const senderName = isMine ? "You" : r.sender?.username || "User";
-
         const dmPeer = !r.isRoom
           ? users?.find((u) => u._id === r.peer?._id)
           : null;
-
         const target = r.isRoom
           ? r.room?.name
           : dmPeer?.username || "Direct message";
-
         const targetColor = r.isRoom
           ? "#93c5fd"
           : colorForUsername(dmPeer?.username || "?");

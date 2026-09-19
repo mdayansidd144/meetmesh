@@ -9,7 +9,6 @@ import {
   Shield,
   Camera,
   Smile,
-  Upload,
   Loader2,
 } from "lucide-react";
 
@@ -210,7 +209,10 @@ export default function Profile() {
           ) : (
             <div className="space-y-4">
               <div className="relative">
-                <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" strokeWidth={1.75} />
+                <UserIcon
+                  className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500"
+                  strokeWidth={1.75}
+                />
                 <input
                   placeholder="Username"
                   value={form.username}

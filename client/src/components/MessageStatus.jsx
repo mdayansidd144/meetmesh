@@ -1,6 +1,8 @@
 import { Check, CheckCheck, Loader2 } from "lucide-react";
+
 const GREY = "rgba(255, 255, 255, 0.75)";
 const GREEN = "#22c55e";
+
 export default function MessageStatus({ status }) {
   if (status === "sending") {
     return (

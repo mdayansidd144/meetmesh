@@ -1,5 +1,5 @@
 import { createPortal } from "react-dom";
-import { Reply, Trash2, Star } from "lucide-react";
+import { Reply, Trash2, Star, Forward } from "lucide-react";
 
 const EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "🙏", "🔥"];
 
@@ -10,6 +10,7 @@ export default function MessageMenu({
   onReply,
   onDelete,
   onStar,
+  onForward,
   position,
 }) {
   if (!position) return null;
@@ -52,6 +53,13 @@ export default function MessageMenu({
         >
           <Reply className="w-4 h-4" strokeWidth={1.75} />
           Reply
+        </button>
+        <button
+          onClick={onForward}
+          className="w-full px-3 py-2 flex items-center gap-2 text-sm text-white hover:bg-white/10 transition text-left border-t border-white/5"
+        >
+          <Forward className="w-4 h-4" strokeWidth={1.75} />
+          Forward
         </button>
         <button
           onClick={onStar}

@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+
 const signalSchema = new mongoose.Schema(
   {
     user: {

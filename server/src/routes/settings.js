@@ -132,7 +132,9 @@ router.put("/parental", protect, async (req, res) => {
 router.post("/parental/verify", protect, async (req, res) => {
   try {
     const { pin } = req.body;
-    const user = await User.findById(req.user._id).select("+settings.parental.pinHash");
+    const user = await User.findById(req.user._id).select(
+      "+settings.parental.pinHash"
+    );
     if (!user?.settings?.parental?.pinHash) {
       return res.status(400).json({ message: "Not configured" });
     }
@@ -188,9 +190,11 @@ router.put("/star/:messageId", protect, async (req, res) => {
     const update = starred
       ? { $addToSet: { starredBy: req.user._id } }
       : { $pull: { starredBy: req.user._id } };
-    const message = await Message.findByIdAndUpdate(req.params.messageId, update, {
-      new: true,
-    });
+    const message = await Message.findByIdAndUpdate(
+      req.params.messageId,
+      update,
+      { new: true }
+    );
     if (!message) return res.status(404).json({ message: "Not found" });
     res.json({ starred });
   } catch (error) {

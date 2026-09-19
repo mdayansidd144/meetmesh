@@ -23,10 +23,7 @@ export default function BottomNav({ active, onChange, unread }) {
             aria-label={tab.label}
           >
             <div className="bottom-nav-icon-wrap">
-              <Icon
-                className="w-6 h-6"
-                strokeWidth={isActive ? 2.4 : 1.9}
-              />
+              <Icon className="w-6 h-6" strokeWidth={isActive ? 2.4 : 1.9} />
               {count > 0 && (
                 <span className="bottom-nav-badge">
                   {count > 99 ? "99+" : count}

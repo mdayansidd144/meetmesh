@@ -2,7 +2,9 @@ import express from "express";
 import fs from "fs";
 import { protect } from "../middleware/auth.js";
 import { uploadChat } from "../config/upload.js";
+
 const router = express.Router();
+
 router.post(
   "/upload",
   protect,
@@ -39,4 +41,5 @@ router.post(
     }
   }
 );
+
 export default router;

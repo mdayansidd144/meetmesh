@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+
 const reactionSchema = new mongoose.Schema(
   {
     user: {
@@ -6,10 +7,7 @@ const reactionSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    emoji: {
-      type: String,
-      required: true,
-    },
+    emoji: { type: String, required: true },
   },
   { _id: false }
 );
@@ -47,20 +45,13 @@ const messageSchema = new mongoose.Schema(
       ref: "Room",
       default: null,
     },
-    text: {
-      type: String,
-      default: "",
-      trim: true,
-    },
+    text: { type: String, default: "", trim: true },
     type: {
       type: String,
       enum: ["text", "call_voice", "call_video", "attachment", "broadcast"],
       default: "text",
     },
-    attachment: {
-      type: attachmentSchema,
-      default: null,
-    },
+    attachment: { type: attachmentSchema, default: null },
     callMeta: {
       status: {
         type: String,
@@ -71,8 +62,23 @@ const messageSchema = new mongoose.Schema(
     },
     delivered: { type: Boolean, default: false },
     read: { type: Boolean, default: false },
+    // ✅ NEW — per-user read tracking for rooms
+    readBy: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
     reactions: { type: [reactionSchema], default: [] },
     replyTo: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Message",
+      default: null,
+    },
+    // ✅ NEW — scheduled messages (null = send immediately)
+    scheduledFor: { type: Date, default: null },
+    // ✅ NEW — forwarding lineage
+    forwardedFrom: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Message",
       default: null,
@@ -92,6 +98,8 @@ const messageSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
 messageSchema.index({ text: "text" });
+messageSchema.index({ scheduledFor: 1, delivered: 1 });
 
 export default mongoose.model("Message", messageSchema);

@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
-import { Plus, X, Type, Image as ImageIcon, Video } from "lucide-react";
+import {
+  Plus,
+  X,
+  Type,
+  Image as ImageIcon,
+  Video,
+} from "lucide-react";
 import SignalViewer from "../components/SignalViewer";
 
 const API = import.meta.env.VITE_API_URL;
@@ -16,6 +22,8 @@ export default function Signals() {
   const [preview, setPreview] = useState("");
   const [uploading, setUploading] = useState(false);
   const [viewing, setViewing] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  const [toast, setToast] = useState("");
 
   const imageInputRef = useRef(null);
   const videoInputRef = useRef(null);
@@ -31,6 +39,11 @@ export default function Signals() {
   useEffect(() => {
     load();
   }, []);
+
+  const showToast = (msg) => {
+    setToast(msg);
+    setTimeout(() => setToast(""), 2500);
+  };
 
   const openComposer = (kind) => {
     setMenuOpen(false);
@@ -84,13 +97,16 @@ export default function Signals() {
     }
   };
 
-  const handleDelete = async (signalId) => {
+  const performDelete = async (signalId) => {
     try {
       await axios.delete(`${API}/signals/${signalId}`);
       setViewing(null);
+      setConfirmDelete(null);
       load();
+      showToast("Signal deleted");
     } catch (err) {
       console.error(err);
+      showToast("Failed to delete");
     }
   };
 
@@ -110,10 +126,7 @@ export default function Signals() {
       </header>
 
       <div className="signals-grid">
-        <button
-          onClick={() => setMenuOpen(true)}
-          className="signal-add-card"
-        >
+        <button onClick={() => setMenuOpen(true)} className="signal-add-card">
           <div className="signal-add-card-avatar">
             {user?.avatar ? (
               <img
@@ -135,37 +148,64 @@ export default function Signals() {
         </button>
 
         {signals.map((s) => {
-          const isMine = s.user?._id === user._id;
+          const isMine =
+            String(s.user?._id || "") === String(user?._id || "");
           return (
-            <button
+            <div
               key={s._id}
-              onClick={() => setViewing(s)}
-              className="signal-card"
+              className="signal-card relative"
+              style={{ position: "relative" }}
             >
-              <div className="signal-ring">
-                {s.user?.avatar ? (
-                  <img
-                    src={s.user.avatar}
-                    alt=""
-                    referrerPolicy="no-referrer"
-                    className="signal-avatar"
-                  />
-                ) : (
-                  <div className="signal-avatar-fallback">
-                    {initial(s.user?.username)}
-                  </div>
-                )}
-              </div>
-              <p className="signal-name">
-                {isMine ? "You" : s.user?.username?.split(" ")[0]}
-              </p>
-              <p className="signal-time">
-                {new Date(s.createdAt).toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </p>
-            </button>
+              <button
+                onClick={() => setViewing(s)}
+                className="signal-card"
+                style={{ width: "100%" }}
+              >
+                <div className="signal-ring">
+                  {s.user?.avatar ? (
+                    <img
+                      src={s.user.avatar}
+                      alt=""
+                      referrerPolicy="no-referrer"
+                      className="signal-avatar"
+                    />
+                  ) : (
+                    <div className="signal-avatar-fallback">
+                      {initial(s.user?.username)}
+                    </div>
+                  )}
+                </div>
+                <p className="signal-name">
+                  {isMine ? "You" : s.user?.username?.split(" ")[0]}
+                </p>
+                <p className="signal-time">
+                  {new Date(s.createdAt).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </p>
+              </button>
+
+              {isMine && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setConfirmDelete(s);
+                  }}
+                  className="absolute -top-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center z-10"
+                  style={{
+                    backgroundColor: "#ef4444",
+                    border: "2px solid #0b1220",
+                    color: "#ffffff",
+                    boxShadow: "0 4px 10px rgba(239,68,68,0.4)",
+                  }}
+                  aria-label="Delete signal"
+                  title="Delete signal"
+                >
+                  <X className="w-3.5 h-3.5" strokeWidth={3} />
+                </button>
+              )}
+            </div>
           );
         })}
       </div>
@@ -174,6 +214,53 @@ export default function Signals() {
         <p className="text-xs text-blue-100/50 text-center px-6">
           No signals yet. Tap Add signal to share what you are up to.
         </p>
+      )}
+
+      {confirmDelete && (
+        <div
+          className="settings-modal-backdrop"
+          onClick={() => setConfirmDelete(null)}
+        >
+          <div
+            className="settings-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="settings-modal-header">
+              <h3 className="settings-modal-title">Delete signal?</h3>
+              <button
+                onClick={() => setConfirmDelete(null)}
+                className="icon-btn-dark"
+                aria-label="Close"
+              >
+                <X className="w-4 h-4" strokeWidth={2} />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <p className="text-sm text-blue-100/70">
+                This will permanently remove your signal. It cannot be undone.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setConfirmDelete(null)}
+                  className="btn-outline-sapphire flex-1 justify-center"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => performDelete(confirmDelete._id)}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
+                  style={{
+                    backgroundColor: "rgba(239, 68, 68, 0.15)",
+                    border: "1px solid rgba(239, 68, 68, 0.30)",
+                    color: "#fca5a5",
+                  }}
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {menuOpen && (
@@ -217,7 +304,9 @@ export default function Signals() {
                 </div>
                 <div className="flex-1 text-left">
                   <p className="signal-option-label">Add image</p>
-                  <p className="signal-option-desc">Pick a photo from your device</p>
+                  <p className="signal-option-desc">
+                    Pick a photo from your device
+                  </p>
                 </div>
               </button>
               <button
@@ -332,10 +421,21 @@ export default function Signals() {
       {viewing && (
         <SignalViewer
           signal={viewing}
-          isMine={viewing.user?._id === user._id}
           onClose={() => setViewing(null)}
-          onDelete={handleDelete}
+          onDelete={performDelete}
         />
+      )}
+
+      {toast && (
+        <div
+          className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[300] px-4 py-2 rounded-xl text-sm text-white"
+          style={{
+            backgroundColor: "rgba(15, 23, 46, 0.95)",
+            border: "1px solid rgba(255,255,255,0.1)",
+          }}
+        >
+          {toast}
+        </div>
       )}
     </div>
   );

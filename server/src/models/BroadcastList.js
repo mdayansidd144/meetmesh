@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+
 const broadcastListSchema = new mongoose.Schema(
   {
     owner: {
@@ -21,4 +22,5 @@ const broadcastListSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
 export default mongoose.model("BroadcastList", broadcastListSchema);

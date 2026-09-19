@@ -79,7 +79,10 @@ export default function SettingsAccount() {
       {message && <p className="settings-message">{message}</p>}
 
       <div className="settings-section-title">Danger zone</div>
-      <button onClick={signOutAll} className="btn-outline-sapphire w-full justify-center mb-3">
+      <button
+        onClick={signOutAll}
+        className="btn-outline-sapphire w-full justify-center mb-3"
+      >
         Sign out from all devices
       </button>
       <button

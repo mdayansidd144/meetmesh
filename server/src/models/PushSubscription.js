@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+
 const pushSubscriptionSchema = new mongoose.Schema(
   {
     user: {

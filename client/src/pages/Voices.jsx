@@ -8,24 +8,59 @@ import {
   PhoneIncoming,
   PhoneMissed,
   Calendar,
-  Grid3x3,
+  Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import ContactPickerModal from "../components/ContactPickerModal";
+import NewChatModal from "../components/NewChatModal";
 
 const API = import.meta.env.VITE_API_URL;
+
+const FILTERS = [
+  { id: "all", label: "All" },
+  { id: "missed", label: "Missed" },
+  { id: "outgoing", label: "Outgoing" },
+  { id: "incoming", label: "Incoming" },
+];
 
 export default function Voices() {
   const navigate = useNavigate();
   const [calls, setCalls] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [onlineIds, setOnlineIds] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState("all");
+  const [pickerMode, setPickerMode] = useState(null); // "voice" | "video" | null
+  const [showNewChat, setShowNewChat] = useState(false);
+  const [toast, setToast] = useState("");
 
   useEffect(() => {
-    axios
-      .get(`${API}/messages/calls/list`)
-      .then((r) => setCalls(r.data))
+    Promise.all([
+      axios.get(`${API}/messages/calls/list`),
+      axios.get(`${API}/auth/users`),
+    ])
+      .then(([callsRes, usersRes]) => {
+        setCalls(callsRes.data);
+        setUsers(usersRes.data);
+      })
       .catch((err) => console.error(err))
       .finally(() => setLoading(false));
   }, []);
+
+  const showToast = (msg) => {
+    setToast(msg);
+    setTimeout(() => setToast(""), 2500);
+  };
+
+  const handlePickContact = (contact) => {
+    setPickerMode(null);
+    navigate("/", {
+      state: {
+        openContactId: contact._id,
+        startCall: pickerMode,
+      },
+    });
+  };
 
   const openChat = (contactId) => {
     navigate("/", { state: { openContactId: contactId } });
@@ -40,50 +75,104 @@ export default function Voices() {
     return `${m}:${s.toString().padStart(2, "0")}`;
   };
 
+  const filteredCalls = calls.filter((c) => {
+    if (filter === "all") return true;
+    if (filter === "missed") {
+      return (
+        c.callMeta?.status === "missed" || c.callMeta?.status === "declined"
+      );
+    }
+    if (filter === "outgoing") return c.direction === "outgoing";
+    if (filter === "incoming") return c.direction === "incoming";
+    return true;
+  });
+
   return (
     <div className="clusters-page">
       <header className="signals-header">
         <h1 className="signals-title">Voices</h1>
       </header>
 
+      {/* Action buttons — Call / Video / Schedule / Search */}
       <div className="voices-actions">
-        <button className="voices-action" aria-label="New voice call">
+        <button
+          className="voices-action"
+          aria-label="New voice call"
+          onClick={() => setPickerMode("voice")}
+        >
           <div className="voices-action-icon">
             <Phone className="w-5 h-5" strokeWidth={1.9} />
           </div>
           <span className="voices-action-label">Call</span>
         </button>
-        <button className="voices-action" aria-label="New video call">
+        <button
+          className="voices-action"
+          aria-label="New video call"
+          onClick={() => setPickerMode("video")}
+        >
           <div className="voices-action-icon">
             <Video className="w-5 h-5" strokeWidth={1.9} />
           </div>
           <span className="voices-action-label">Video</span>
         </button>
-        <button className="voices-action" aria-label="Schedule call">
+        <button
+          className="voices-action"
+          aria-label="Schedule call"
+          onClick={() =>
+            showToast("Scheduling is coming soon — start a call from any chat")
+          }
+        >
           <div className="voices-action-icon">
             <Calendar className="w-5 h-5" strokeWidth={1.9} />
           </div>
           <span className="voices-action-label">Schedule</span>
         </button>
-        <button className="voices-action" aria-label="Open keypad">
+        <button
+          className="voices-action"
+          aria-label="Find a contact"
+          onClick={() => setShowNewChat(true)}
+        >
           <div className="voices-action-icon">
-            <Grid3x3 className="w-5 h-5" strokeWidth={1.9} />
+            <Search className="w-5 h-5" strokeWidth={1.9} />
           </div>
-          <span className="voices-action-label">Keypad</span>
+          <span className="voices-action-label">Find</span>
         </button>
+      </div>
+
+      {/* Filter tabs */}
+      <div className="flex gap-2 px-5 pb-3 overflow-x-auto">
+        {FILTERS.map((f) => {
+          const active = filter === f.id;
+          return (
+            <button
+              key={f.id}
+              onClick={() => setFilter(f.id)}
+              className={cn(
+                "px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition",
+                active
+                  ? "bg-blue-500 text-white"
+                  : "bg-white/5 text-blue-100/70 hover:bg-white/10",
+              )}
+            >
+              {f.label}
+            </button>
+          );
+        })}
       </div>
 
       {loading ? (
         <p className="text-center text-blue-100/60 text-sm py-8">Loading</p>
-      ) : calls.length === 0 ? (
+      ) : filteredCalls.length === 0 ? (
         <div className="signals-empty">
           <p className="text-sm text-blue-100/60 text-center">
-            No calls yet. Start one from any thread.
+            {filter === "all"
+              ? "No calls yet. Tap Call or Video above to start one."
+              : `No ${filter} calls.`}
           </p>
         </div>
       ) : (
         <div className="clusters-list">
-          {calls.map((c) => {
+          {filteredCalls.map((c) => {
             const other = c.other;
             const isVideo = c.type === "call_video";
             const isMissed =
@@ -93,8 +182,8 @@ export default function Voices() {
             const ArrowIcon = isMissed
               ? PhoneMissed
               : isOutgoing
-              ? PhoneOutgoing
-              : PhoneIncoming;
+                ? PhoneOutgoing
+                : PhoneIncoming;
             const TrailIcon = isVideo ? Video : Phone;
             return (
               <button
@@ -120,7 +209,7 @@ export default function Voices() {
                   <p
                     className={cn(
                       "text-sm font-semibold truncate",
-                      isMissed ? "text-red-400" : "text-white"
+                      isMissed ? "text-red-400" : "text-white",
                     )}
                   >
                     {other?.username || "Unknown"}
@@ -132,8 +221,8 @@ export default function Voices() {
                         isMissed
                           ? "text-red-400"
                           : isOutgoing
-                          ? "text-green-400"
-                          : "text-blue-400"
+                            ? "text-green-400"
+                            : "text-blue-400",
                       )}
                       strokeWidth={2.5}
                     />
@@ -156,6 +245,35 @@ export default function Voices() {
               </button>
             );
           })}
+        </div>
+      )}
+
+      {/* Contact picker for Call / Video */}
+      {pickerMode && (
+        <ContactPickerModal
+          users={users}
+          onlineIds={onlineIds}
+          mode={pickerMode}
+          onClose={() => setPickerMode(null)}
+          onPick={handlePickContact}
+        />
+      )}
+
+      {/* Find / New chat modal */}
+      {showNewChat && (
+        <NewChatModal onClose={() => setShowNewChat(false)} />
+      )}
+
+      {/* Toast */}
+      {toast && (
+        <div
+          className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[300] px-4 py-2 rounded-xl text-sm text-white"
+          style={{
+            backgroundColor: "rgba(15, 23, 46, 0.95)",
+            border: "1px solid rgba(255,255,255,0.1)",
+          }}
+        >
+          {toast}
         </div>
       )}
     </div>

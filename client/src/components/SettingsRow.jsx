@@ -26,7 +26,11 @@ export default function SettingsRow({
           <p className="settings-row-description">{description}</p>
         )}
       </div>
-      {right !== undefined ? right : <ChevronRight className="w-4 h-4 text-blue-200/40" />}
+      {right !== undefined ? (
+        right
+      ) : (
+        <ChevronRight className="w-4 h-4 text-blue-200/40" />
+      )}
     </button>
   );
 }

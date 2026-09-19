@@ -1,55 +1,3 @@
-// import { useEffect, useRef } from "react";
-// import { io } from "socket.io-client";
-
-// const SOCKET_URL = import.meta.env.VITE_SOCKET_URL;
-
-// export const useSocket = (userId, handlers = {}) => {
-//   const socketRef = useRef(null);
-//   useEffect(() => {
-//     if (!userId) return;
-//     const socket = io(SOCKET_URL, { transports: ["websocket"] });
-//     socketRef.current = socket;
-//     socket.on("connect", () => {
-//       socket.emit("user:online", userId);
-//     });
-
-//     if (handlers.onMessageReceive)
-//       socket.on("message:receive", handlers.onMessageReceive);
-//     if (handlers.onMessageSent)
-//       socket.on("message:sent", handlers.onMessageSent);
-//     if (handlers.onUsersOnline)
-//       socket.on("users:online", handlers.onUsersOnline);
-//     if (handlers.onTypingStart)
-//       socket.on("typing:start", handlers.onTypingStart);
-//     if (handlers.onTypingStop)
-//       socket.on("typing:stop", handlers.onTypingStop);
-//     if (handlers.onMessagesRead)
-//       socket.on("messages:read", handlers.onMessagesRead);
-//     if (handlers.onMessagesDelivered)
-//       socket.on("messages:delivered", handlers.onMessagesDelivered);
-//     if (handlers.onIncomingCall)
-//       socket.on("call:incoming", handlers.onIncomingCall);
-//     if (handlers.onRoomMessageReceive)
-//       socket.on("room:message:receive", handlers.onRoomMessageReceive);
-//     if (handlers.onRoomMessageSent)
-//       socket.on("room:message:sent", handlers.onRoomMessageSent);
-//     if (handlers.onRoomTypingStart)
-//       socket.on("room:typing:start", handlers.onRoomTypingStart);
-//     if (handlers.onRoomTypingStop)
-//       socket.on("room:typing:stop", handlers.onRoomTypingStop);
-//     if (handlers.onReactionUpdate)
-//       socket.on("message:reaction:update", handlers.onReactionUpdate);
-//     if (handlers.onMessageDeleted)
-//       socket.on("message:deleted", handlers.onMessageDeleted);
-//     if (handlers.onCallLogNew)
-//       socket.on("call:log:new", handlers.onCallLogNew);
-
-//     return () => {
-//       socket.disconnect();
-//     };
-//   }, [userId]);
-//   return socketRef;
-// };
 import { useEffect, useRef } from "react";
 import { io } from "socket.io-client";
 
@@ -59,7 +7,6 @@ export const useSocket = (userId, handlers = {}) => {
   const socketRef = useRef(null);
   const handlersRef = useRef(handlers);
 
-  // Always keep the latest handlers without re-running the connect effect
   useEffect(() => {
     handlersRef.current = handlers;
   });
@@ -78,10 +25,9 @@ export const useSocket = (userId, handlers = {}) => {
     socketRef.current = socket;
 
     socket.on("connect", () => {
-      socket.emit("user:online", userId);
+      socket.emit("user:online", userId.toString());
     });
 
-    // Register listeners ONCE — each delegates to the latest handler via ref
     const bind = (event, key) => {
       socket.on(event, (...args) => {
         const fn = handlersRef.current?.[key];
@@ -105,7 +51,17 @@ export const useSocket = (userId, handlers = {}) => {
     bind("message:deleted", "onMessageDeleted");
     bind("call:log:new", "onCallLogNew");
 
+    const onFocus = () => {
+      if (!socket.connected) socket.connect();
+      else socket.emit("user:online", userId.toString());
+    };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") onFocus();
+    });
+
     return () => {
+      window.removeEventListener("focus", onFocus);
       socket.removeAllListeners();
       socket.disconnect();
       socketRef.current = null;

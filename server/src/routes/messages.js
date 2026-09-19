@@ -1,9 +1,22 @@
 import express from "express";
 import Message from "../models/Message.js";
 import User from "../models/User.js";
+import Contact from "../models/Contact.js";
 import { protect } from "../middleware/auth.js";
 
 const router = express.Router();
+
+// Helper — is `otherUserId` an accepted contact of `meId`?
+const areContacts = async (meId, otherUserId) => {
+  const c = await Contact.findOne({
+    status: "accepted",
+    $or: [
+      { sender: meId, receiver: otherUserId },
+      { sender: otherUserId, receiver: meId },
+    ],
+  });
+  return !!c;
+};
 
 router.get("/conversations/list", protect, async (req, res) => {
   try {
@@ -94,6 +107,7 @@ router.get("/calls/list", protect, async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 });
+
 router.get("/search", protect, async (req, res) => {
   try {
     const raw = (req.query.q || "").trim();
@@ -202,6 +216,7 @@ router.get("/:userId", protect, async (req, res) => {
   }
 });
 
+// ✨ ROUND 2: POST /messages now enforces contact check
 router.post("/", protect, async (req, res) => {
   try {
     const { receiver, text } = req.body;
@@ -211,6 +226,15 @@ router.post("/", protect, async (req, res) => {
     if (receiver === req.user._id.toString()) {
       return res.status(400).json({ message: "Cannot message yourself" });
     }
+
+    const ok = await areContacts(req.user._id, receiver);
+    if (!ok) {
+      return res.status(403).json({
+        message: "You can only message accepted contacts",
+        code: "NOT_CONTACTS",
+      });
+    }
+
     const message = await Message.create({
       sender: req.user._id,
       receiver,

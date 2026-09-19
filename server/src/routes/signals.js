@@ -3,7 +3,9 @@ import fs from "fs";
 import Signal from "../models/Signal.js";
 import { protect } from "../middleware/auth.js";
 import { uploadSignal } from "../config/upload.js";
+
 const router = express.Router();
+
 router.get("/", protect, async (req, res) => {
   try {
     const signals = await Signal.find({

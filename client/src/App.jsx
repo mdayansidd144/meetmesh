@@ -1,8 +1,11 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
+import { useLockContext } from "./context/LockContext";
+import LockScreen from "./pages/LockScreen";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Chat from "./pages/Chat";
+import AIChat from "./pages/AIChat";
 import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
 import SettingsAccount from "./pages/SettingsAccount";
@@ -18,11 +21,14 @@ import SettingsLanguage from "./pages/SettingsLanguage";
 import SettingsHelp from "./pages/SettingsHelp";
 import SettingsParental from "./pages/SettingsParental";
 import SettingsDevices from "./pages/SettingsDevices";
+import SettingsRingtone from "./pages/SettingsRingtone";
+import SettingsSecurity from "./pages/SettingsSecurity";
 import Starred from "./pages/Starred";
 import Broadcasts from "./pages/Broadcasts";
 
 export default function App() {
   const { user, loading } = useAuth();
+  const lock = useLockContext();
 
   if (loading) {
     return (
@@ -32,20 +38,31 @@ export default function App() {
     );
   }
 
+  if (user && lock.ready && lock.locked) {
+    return <LockScreen onUnlock={lock.unlock} />;
+  }
+
   const guard = (element) =>
     user ? element : <Navigate to="/login" replace />;
 
   return (
     <Routes>
       <Route path="/login" element={user ? <Navigate to="/" /> : <Login />} />
-      <Route path="/register" element={user ? <Navigate to="/" /> : <Register />} />
+      <Route
+        path="/register"
+        element={user ? <Navigate to="/" /> : <Register />}
+      />
+      <Route path="/ai" element={guard(<AIChat />)} />
       <Route path="/profile" element={guard(<Profile />)} />
       <Route path="/settings" element={guard(<Settings />)} />
       <Route path="/settings/account" element={guard(<SettingsAccount />)} />
       <Route path="/settings/privacy" element={guard(<SettingsPrivacy />)} />
       <Route path="/settings/lists" element={guard(<SettingsLists />)} />
       <Route path="/settings/chats" element={guard(<SettingsChats />)} />
-      <Route path="/settings/appearance" element={guard(<SettingsAppearance />)} />
+      <Route
+        path="/settings/appearance"
+        element={guard(<SettingsAppearance />)}
+      />
       <Route
         path="/settings/notifications"
         element={guard(<SettingsNotifications />)}
@@ -68,9 +85,14 @@ export default function App() {
         path="/settings/parental"
         element={guard(<SettingsParental />)}
       />
+      <Route path="/settings/devices" element={guard(<SettingsDevices />)} />
       <Route
-        path="/settings/devices"
-        element={guard(<SettingsDevices />)}
+        path="/settings/ringtone"
+        element={guard(<SettingsRingtone />)}
+      />
+      <Route
+        path="/settings/security"
+        element={guard(<SettingsSecurity />)}
       />
       <Route path="/settings/starred" element={guard(<Starred />)} />
       <Route path="/broadcasts" element={guard(<Broadcasts />)} />

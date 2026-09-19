@@ -3,6 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import SettingsHeader from "../components/SettingsHeader";
 import SettingsRow from "../components/SettingsRow";
+import { ShieldCheck } from "lucide-react";
 import {
   KeyRound,
   Lock,
@@ -10,6 +11,7 @@ import {
   MessageSquare,
   Palette,
   Bell,
+  Music,
   Megaphone,
   Database,
   Accessibility,
@@ -108,6 +110,12 @@ export default function Settings() {
         onClick={() => navigate("/settings/notifications")}
       />
       <SettingsRow
+        icon={Music}
+        label="Ringtone"
+        description="Choose your incoming call sound"
+        onClick={() => navigate("/settings/ringtone")}
+      />
+      <SettingsRow
         icon={Megaphone}
         label="Broadcasts"
         description="Who can add you to broadcast lists"
@@ -120,10 +128,10 @@ export default function Settings() {
         onClick={() => navigate("/settings/storage")}
       />
       <SettingsRow
-        icon={Shield}
-        label="Parental controls"
-        description="PIN lock, restricted features"
-        onClick={() => navigate("/settings/parental")}
+        icon={ShieldCheck}
+        label="Security"
+        description="PIN, biometric, voice lock"
+        onClick={() => navigate("/settings/security")}
       />
       <SettingsRow
         icon={Accessibility}

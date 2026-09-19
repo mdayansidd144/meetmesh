@@ -1,18 +1,26 @@
- import React from "react";
+import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import App from "./App.jsx";
 import { AuthProvider } from "./context/AuthContext.jsx";
 import { ThemeProvider } from "./context/ThemeContext.jsx";
+import { LockProvider } from "./context/LockContext.jsx";
+import { setLanguage } from "./i18n";
 import "./index.css";
+
+// Load the saved language BEFORE first render so the app boots in the right locale
+const savedLang = localStorage.getItem("appLanguage") || "en";
+setLanguage(savedLang);
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
     <BrowserRouter>
       <ThemeProvider>
         <AuthProvider>
-          <App />
+          <LockProvider>
+            <App />
+          </LockProvider>
         </AuthProvider>
       </ThemeProvider>
     </BrowserRouter>

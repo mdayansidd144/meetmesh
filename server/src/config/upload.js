@@ -1,6 +1,7 @@
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+
 const UPLOAD_ROOT = path.join(process.cwd(), "uploads");
 const AVATAR_DIR = path.join(UPLOAD_ROOT, "avatars");
 const IMAGE_DIR = path.join(UPLOAD_ROOT, "images");
@@ -8,6 +9,7 @@ const AUDIO_DIR = path.join(UPLOAD_ROOT, "audio");
 const FILE_DIR = path.join(UPLOAD_ROOT, "files");
 const BACKGROUND_DIR = path.join(UPLOAD_ROOT, "backgrounds");
 const SIGNAL_DIR = path.join(UPLOAD_ROOT, "signals");
+
 [
   UPLOAD_ROOT,
   AVATAR_DIR,
@@ -28,7 +30,6 @@ const chatStorage = multer.diskStorage({
     let folder = FILE_DIR;
     if (file.mimetype.startsWith("image/")) folder = IMAGE_DIR;
     else if (file.mimetype.startsWith("audio/")) folder = AUDIO_DIR;
-
     if (!fs.existsSync(folder)) fs.mkdirSync(folder, { recursive: true });
     cb(null, folder);
   },
@@ -107,6 +108,7 @@ const signalFileFilter = (req, file, cb) => {
     allowed.test(path.extname(file.originalname).toLowerCase());
   cb(ok ? null : new Error("Only image files are allowed"), ok);
 };
+
 export const uploadAvatar = multer({
   storage: avatarStorage,
   fileFilter: avatarFileFilter,

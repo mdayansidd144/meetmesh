@@ -63,9 +63,7 @@ export default function SettingsHelp() {
               <ChevronDown className="w-4 h-4 flex-shrink-0" />
             )}
           </button>
-          {open === i && (
-            <p className="settings-faq-answer">{item.a}</p>
-          )}
+          {open === i && <p className="settings-faq-answer">{item.a}</p>}
         </div>
       ))}
       <div className="settings-section-title">Send feedback</div>

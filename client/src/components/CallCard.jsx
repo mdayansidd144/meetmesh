@@ -1,4 +1,10 @@
-import { Phone, PhoneOutgoing, PhoneIncoming, Video, PhoneMissed } from "lucide-react";
+import {
+  Phone,
+  PhoneOutgoing,
+  PhoneIncoming,
+  Video,
+  PhoneMissed,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function CallCard({ message, mine }) {
@@ -7,11 +13,7 @@ export default function CallCard({ message, mine }) {
   const duration = message.callMeta?.duration || 0;
   const isMissed = status === "missed" || status === "declined";
 
-  const Icon = isMissed
-    ? PhoneMissed
-    : mine
-    ? PhoneOutgoing
-    : PhoneIncoming;
+  const Icon = isMissed ? PhoneMissed : mine ? PhoneOutgoing : PhoneIncoming;
 
   const label = (() => {
     if (status === "missed") {

@@ -33,9 +33,15 @@ export default function SettingsBroadcasts() {
           onChange={(e) => update(e.target.value)}
           className="input-dark"
         >
-          <option value="everyone" className="bg-[#0f172e]">Everyone</option>
-          <option value="contacts" className="bg-[#0f172e]">My contacts</option>
-          <option value="nobody" className="bg-[#0f172e]">Nobody</option>
+          <option value="everyone" className="bg-[#0f172e]">
+            Everyone
+          </option>
+          <option value="contacts" className="bg-[#0f172e]">
+            My contacts
+          </option>
+          <option value="nobody" className="bg-[#0f172e]">
+            Nobody
+          </option>
         </select>
       </div>
     </div>

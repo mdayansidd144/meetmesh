@@ -60,7 +60,10 @@ export default function SettingsStorage() {
         <p className="settings-label">Total attachments</p>
         <p className="settings-static">{stats.count}</p>
       </div>
-      <button onClick={clearCache} className="btn-outline-sapphire w-full justify-center mt-2">
+      <button
+        onClick={clearCache}
+        className="btn-outline-sapphire w-full justify-center mt-2"
+      >
         Clear local cache
       </button>
       {cleared && <p className="settings-message">Local cache cleared</p>}

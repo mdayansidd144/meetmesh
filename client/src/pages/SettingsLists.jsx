@@ -112,7 +112,10 @@ export default function SettingsLists() {
       )}
 
       {composing && (
-        <div className="settings-modal-backdrop" onClick={() => setComposing(false)}>
+        <div
+          className="settings-modal-backdrop"
+          onClick={() => setComposing(false)}
+        >
           <div
             className="settings-modal"
             onClick={(e) => e.stopPropagation()}

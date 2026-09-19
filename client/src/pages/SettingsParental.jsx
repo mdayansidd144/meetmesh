@@ -5,9 +5,7 @@ import SettingsToggle from "../components/SettingsToggle";
 
 export default function SettingsParental() {
   const { user, patchSettings } = useAuth();
-  const [enabled, setEnabled] = useState(
-    !!user?.settings?.parental?.enabled
-  );
+  const [enabled, setEnabled] = useState(!!user?.settings?.parental?.enabled);
   const [pin, setPin] = useState("");
   const [status, setStatus] = useState("");
 
@@ -57,7 +55,10 @@ export default function SettingsParental() {
             className="input-dark"
             placeholder="0000"
           />
-          <button onClick={() => save(true)} className="btn-sapphire w-full mt-3">
+          <button
+            onClick={() => save(true)}
+            className="btn-sapphire w-full mt-3"
+          >
             Enable PIN lock
           </button>
         </div>

@@ -2,11 +2,7 @@ import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema(
   {
-    username: {
-      type: String,
-      required: true,
-      trim: true,
-    },
+    username: { type: String, required: true, trim: true },
     email: {
       type: String,
       required: true,
@@ -14,53 +10,43 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
       trim: true,
     },
-    password: {
-      type: String,
-      minlength: 6,
-      select: false,
-    },
+    password: { type: String, minlength: 6, select: false },
     provider: {
       type: String,
-      enum: ["local", "google"],
+      enum: ["local", "google", "ai"],
       default: "local",
     },
-    googleId: {
-      type: String,
-      default: null,
-    },
-    avatar: {
-      type: String,
-      default: "",
-    },
-    bio: {
-      type: String,
-      default: "",
-      maxlength: 160,
-    },
-    chatTheme: {
-      type: String,
-      default: "sapphire",
-    },
-    chatBackground: {
-      type: String,
-      default: "",
-    },
-    online: {
-      type: Boolean,
-      default: false,
-    },
-    blockedUsers: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
-      },
-    ],
+    googleId: { type: String, default: null },
+    isAI: { type: Boolean, default: false },
+    aiProvider: { type: String, default: "" },
+    avatar: { type: String, default: "" },
+    bio: { type: String, default: "", maxlength: 160 },
+    chatTheme: { type: String, default: "sapphire" },
+    chatBackground: { type: String, default: "" },
+    ringtone: { type: String, default: "classic" },
+    ringtoneUrl: { type: String, default: "" },
+    online: { type: Boolean, default: false },
+    blockedUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     starredMessages: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Message",
-      },
+      { type: mongoose.Schema.Types.ObjectId, ref: "Message" },
     ],
+    security: {
+      methods: {
+        type: [String],
+        enum: ["pin", "biometric", "voice"],
+        default: [],
+      },
+      pinHash: { type: String, default: "" },
+      pinLength: { type: Number, default: 4 },
+      voicePrint: { type: [Number], default: [] },
+      voicePassphrase: { type: String, default: "" },
+      webauthn: {
+        credentialId: { type: String, default: "" },
+        rawIdBase64: { type: String, default: "" },
+        transports: { type: [String], default: [] },
+        createdAt: { type: Date, default: null },
+      },
+    },
     settings: {
       privacy: {
         lastSeen: {
@@ -80,6 +66,12 @@ const userSchema = new mongoose.Schema(
         },
         readReceipts: { type: Boolean, default: true },
         status: {
+          type: String,
+          enum: ["everyone", "contacts", "nobody"],
+          default: "everyone",
+        },
+        // ✅ NEW — controls search visibility & incoming contact requests
+        discoverable: {
           type: String,
           enum: ["everyone", "contacts", "nobody"],
           default: "everyone",

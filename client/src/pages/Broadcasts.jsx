@@ -1,13 +1,11 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
 import { Plus, X, Check, Users, Send } from "lucide-react";
 import SettingsHeader from "../components/SettingsHeader";
 
 const API = import.meta.env.VITE_API_URL;
 
 export default function Broadcasts() {
-  const navigate = useNavigate();
   const [lists, setLists] = useState([]);
   const [users, setUsers] = useState([]);
   const [creating, setCreating] = useState(false);

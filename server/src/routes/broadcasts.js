@@ -22,9 +22,7 @@ router.post("/", protect, async (req, res) => {
   try {
     const { name, recipientIds } = req.body;
     if (!name || !Array.isArray(recipientIds) || recipientIds.length === 0) {
-      return res
-        .status(400)
-        .json({ message: "Name and recipients required" });
+      return res.status(400).json({ message: "Name and recipients required" });
     }
     const list = await BroadcastList.create({
       owner: req.user._id,
@@ -85,7 +83,11 @@ router.post("/:id/send", protect, async (req, res) => {
     for (const recipientId of list.recipients) {
       const recipient = await User.findById(recipientId);
       if (!recipient) continue;
-      if (recipient.blockedUsers?.some((b) => b.toString() === req.user._id.toString())) {
+      if (
+        recipient.blockedUsers?.some(
+          (b) => b.toString() === req.user._id.toString()
+        )
+      ) {
         continue;
       }
       const message = await Message.create({
@@ -95,11 +97,14 @@ router.post("/:id/send", protect, async (req, res) => {
         type: "broadcast",
       });
       const populated = await message.populate("sender", "username avatar");
-      const socketId = onlineUsers.get(recipientId.toString());
-      if (socketId && io) {
+      const hasSockets = onlineUsers.has(recipientId.toString());
+      if (hasSockets && io) {
         message.delivered = true;
         await message.save();
-        io.to(socketId).emit("message:receive", populated.toObject());
+        io.to(`user:${recipientId}`).emit(
+          "message:receive",
+          populated.toObject()
+        );
       }
       created.push(populated.toObject());
     }

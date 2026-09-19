@@ -6,7 +6,11 @@ import {
   VideoOff,
   PhoneOff,
   Phone,
+  MonitorUp,
+  MonitorOff,
 } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
+import { useRingtone } from "../hooks/useRingtone";
 
 const ICE_SERVERS = {
   iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
@@ -23,11 +27,14 @@ export default function VideoCall({
   onClose,
   logCall,
 }) {
+  const { user } = useAuth();
+
   const [status, setStatus] = useState(
     role === "caller" ? "calling" : "incoming"
   );
   const [muted, setMuted] = useState(false);
   const [cameraOn, setCameraOn] = useState(video);
+  const [sharing, setSharing] = useState(false);
   const [error, setError] = useState("");
   const [startTime, setStartTime] = useState(null);
 
@@ -35,8 +42,12 @@ export default function VideoCall({
   const remoteVideoRef = useRef(null);
   const pcRef = useRef(null);
   const localStreamRef = useRef(null);
+  const screenStreamRef = useRef(null);
   const pendingCandidates = useRef([]);
   const loggedRef = useRef(false);
+
+  // ── Ringtone: plays while showing the incoming-call screen ──
+  useRingtone(user?.ringtone, user?.ringtoneUrl, status === "incoming");
 
   useEffect(() => {
     const socket = socketRef.current;
@@ -51,7 +62,7 @@ export default function VideoCall({
         setStatus("active");
         setStartTime(Date.now());
         flushPendingCandidates();
-      } catch (err) {
+      } catch {
         setError("Could not connect the call");
       }
     });
@@ -90,12 +101,8 @@ export default function VideoCall({
   }, []);
 
   useEffect(() => {
-    if (role === "caller") {
-      startCall();
-    }
-    return () => {
-      cleanup(false);
-    };
+    if (role === "caller") startCall();
+    return () => cleanup(false);
   }, []);
 
   const finalizeCall = (status) => {
@@ -182,7 +189,7 @@ export default function VideoCall({
         callerName: callerName || peer.username,
         video,
       });
-    } catch (err) {
+    } catch {
       setError("Could not access your camera or microphone");
     }
   };
@@ -190,16 +197,14 @@ export default function VideoCall({
   const acceptCall = async () => {
     try {
       const pc = await createPeer();
-      await pc.setRemoteDescription(
-        new RTCSessionDescription(incomingOffer)
-      );
+      await pc.setRemoteDescription(new RTCSessionDescription(incomingOffer));
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
       socketRef.current?.emit("call:answer", { to: peer._id, answer });
       setStatus("active");
       setStartTime(Date.now());
       await flushPendingCandidates();
-    } catch (err) {
+    } catch {
       setError("Could not accept the call");
     }
   };
@@ -224,10 +229,64 @@ export default function VideoCall({
     setCameraOn((c) => !c);
   };
 
+  const toggleScreenShare = async () => {
+    if (!pcRef.current) return;
+    try {
+      if (!sharing) {
+        const displayStream = await navigator.mediaDevices.getDisplayMedia({
+          video: true,
+          audio: false,
+        });
+        screenStreamRef.current = displayStream;
+        const screenTrack = displayStream.getVideoTracks()[0];
+
+        const sender = pcRef.current
+          .getSenders()
+          .find((s) => s.track && s.track.kind === "video");
+        if (sender) await sender.replaceTrack(screenTrack);
+
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = displayStream;
+        }
+        setSharing(true);
+
+        screenTrack.onended = async () => {
+          const camTrack = localStreamRef.current?.getVideoTracks()[0];
+          if (camTrack && sender) await sender.replaceTrack(camTrack);
+          if (localVideoRef.current) {
+            localVideoRef.current.srcObject = localStreamRef.current;
+          }
+          screenStreamRef.current = null;
+          setSharing(false);
+        };
+      } else {
+        const camTrack = localStreamRef.current?.getVideoTracks()[0];
+        const sender = pcRef.current
+          .getSenders()
+          .find((s) => s.track && s.track.kind === "video");
+        if (camTrack && sender) await sender.replaceTrack(camTrack);
+        if (screenStreamRef.current) {
+          screenStreamRef.current.getTracks().forEach((t) => t.stop());
+        }
+        screenStreamRef.current = null;
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = localStreamRef.current;
+        }
+        setSharing(false);
+      }
+    } catch (err) {
+      setError("Could not share screen");
+    }
+  };
+
   const cleanup = (notifyPeer = true) => {
     if (notifyPeer) {
       socketRef.current?.emit("call:end", { to: peer._id });
       finalizeCall("answered");
+    }
+    if (screenStreamRef.current) {
+      screenStreamRef.current.getTracks().forEach((t) => t.stop());
+      screenStreamRef.current = null;
     }
     pcRef.current?.close();
     pcRef.current = null;
@@ -243,9 +302,7 @@ export default function VideoCall({
           <div className="w-20 h-20 mx-auto rounded-full avatar-sapphire text-3xl">
             {peer.username?.[0]?.toUpperCase()}
           </div>
-          <h2 className="mt-4 text-xl font-bold text-white">
-            {peer.username}
-          </h2>
+          <h2 className="mt-4 text-xl font-bold text-white">{peer.username}</h2>
           <p className="text-sm text-blue-100/70 mt-1">
             {video ? "Incoming video call" : "Incoming voice call"}
           </p>
@@ -283,7 +340,7 @@ export default function VideoCall({
               className="w-full h-full object-cover"
             />
             <span className="absolute bottom-3 left-3 text-xs text-white bg-blue-500/90 px-3 py-1 rounded-lg">
-              You
+              {sharing ? "Your screen" : "You"}
             </span>
           </div>
         ) : (
@@ -335,21 +392,39 @@ export default function VideoCall({
           )}
         </button>
         {video && (
-          <button
-            onClick={toggleCamera}
-            className={
-              !cameraOn
-                ? "w-12 h-12 rounded-full flex items-center justify-center transition bg-blue-500 text-white"
-                : "w-12 h-12 rounded-full flex items-center justify-center transition bg-white/10 text-white hover:bg-white/20"
-            }
-            aria-label="Toggle camera"
-          >
-            {cameraOn ? (
-              <VideoIcon className="w-5 h-5" strokeWidth={2} />
-            ) : (
-              <VideoOff className="w-5 h-5" strokeWidth={2} />
-            )}
-          </button>
+          <>
+            <button
+              onClick={toggleCamera}
+              className={
+                !cameraOn
+                  ? "w-12 h-12 rounded-full flex items-center justify-center transition bg-blue-500 text-white"
+                  : "w-12 h-12 rounded-full flex items-center justify-center transition bg-white/10 text-white hover:bg-white/20"
+              }
+              aria-label="Toggle camera"
+            >
+              {cameraOn ? (
+                <VideoIcon className="w-5 h-5" strokeWidth={2} />
+              ) : (
+                <VideoOff className="w-5 h-5" strokeWidth={2} />
+              )}
+            </button>
+            <button
+              onClick={toggleScreenShare}
+              className={
+                sharing
+                  ? "w-12 h-12 rounded-full flex items-center justify-center transition bg-blue-500 text-white"
+                  : "w-12 h-12 rounded-full flex items-center justify-center transition bg-white/10 text-white hover:bg-white/20"
+              }
+              aria-label={sharing ? "Stop sharing" : "Share screen"}
+              title={sharing ? "Stop sharing" : "Share screen"}
+            >
+              {sharing ? (
+                <MonitorOff className="w-5 h-5" strokeWidth={2} />
+              ) : (
+                <MonitorUp className="w-5 h-5" strokeWidth={2} />
+              )}
+            </button>
+          </>
         )}
         <button
           onClick={() => cleanup(true)}

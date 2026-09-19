@@ -56,10 +56,7 @@ export default function CreateRoomModal({ users, onClose, onCreate }) {
               <button
                 key={u._id}
                 onClick={() => toggle(u._id)}
-                className={cn(
-                  "contact-row",
-                  isSelected && "active"
-                )}
+                className={cn("contact-row", isSelected && "active")}
                 aria-label={`Toggle ${u.username}`}
               >
                 <div className="relative flex-shrink-0">
@@ -80,9 +77,7 @@ export default function CreateRoomModal({ users, onClose, onCreate }) {
                   <p className="text-sm font-semibold text-white truncate">
                     {u.username}
                   </p>
-                  <p className="text-xs text-blue-100/60 truncate">
-                    {u.email}
-                  </p>
+                  <p className="text-xs text-blue-100/60 truncate">{u.email}</p>
                 </div>
                 {isSelected && (
                   <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center">
@@ -93,9 +88,7 @@ export default function CreateRoomModal({ users, onClose, onCreate }) {
             );
           })}
         </div>
-        {error && (
-          <p className="px-5 pb-2 text-sm text-red-400">{error}</p>
-        )}
+        {error && <p className="px-5 pb-2 text-sm text-red-400">{error}</p>}
         <div className="px-5 py-4 divider-dark flex gap-3">
           <button
             onClick={onClose}

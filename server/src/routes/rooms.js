@@ -2,7 +2,7 @@ import express from "express";
 import Room from "../models/Room.js";
 import Message from "../models/Message.js";
 import { protect } from "../middleware/auth.js";
-import { onlineUsers } from "../socket/socketHandler.js";
+import { onlineUsers, getUserSocket } from "../socket/socketHandler.js";
 
 const router = express.Router();
 
@@ -37,7 +37,7 @@ router.post("/", protect, async (req, res) => {
     const io = req.app.get("io");
     if (io) {
       uniqueMembers.forEach((memberId) => {
-        const socketId = onlineUsers.get(memberId.toString());
+        const socketId = getUserSocket(memberId);
         if (socketId) {
           const target = io.sockets.sockets.get(socketId);
           if (target) target.join(`room:${room._id.toString()}`);
